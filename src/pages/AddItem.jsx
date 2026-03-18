@@ -34,7 +34,7 @@ export default function AddItem({ navigate, editItem }) {
       ? calcDailyCost(parseFloat(form.price), days)
       : null;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.name.trim() || !form.price || !form.buyDate) {
       alert("请填写必填项：物品名称、购买价格、购买日期");
       return;
@@ -43,12 +43,17 @@ export default function AddItem({ navigate, editItem }) {
       ...form,
       price: parseFloat(form.price),
     };
-    if (isEdit) {
-      updateItem(editItem.id, data);
-    } else {
-      addItem(data);
+
+    try {
+      if (isEdit) {
+        await updateItem(editItem.id, data);
+      } else {
+        await addItem(data);
+      }
+      navigate("list");
+    } catch (error) {
+      alert(error.message || "保存物品失败");
     }
-    navigate("list");
   };
 
   return (

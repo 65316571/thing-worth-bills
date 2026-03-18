@@ -11,23 +11,35 @@ export default function ItemDetail({ item, navigate }) {
   const daily = calcDailyCost(item.price, days);
   const icon = CATEGORY_ICONS[item.category] || "📦";
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (window.confirm(`确定删除「${item.name}」吗？`)) {
-      deleteItem(item.id);
-      navigate("list");
+      try {
+        await deleteItem(item.id);
+        navigate("list");
+      } catch (error) {
+        alert(error.message || "删除物品失败");
+      }
     }
   };
 
-  const handleDeactivate = () => {
+  const handleDeactivate = async () => {
     if (window.confirm(`标记「${item.name}」为已停用？`)) {
-      deactivateItem(item.id);
-      navigate("list");
+      try {
+        await deactivateItem(item.id);
+        navigate("list");
+      } catch (error) {
+        alert(error.message || "停用物品失败");
+      }
     }
   };
 
-  const handleReactivate = () => {
-    reactivateItem(item.id);
-    navigate("list");
+  const handleReactivate = async () => {
+    try {
+      await reactivateItem(item.id);
+      navigate("list");
+    } catch (error) {
+      alert(error.message || "恢复物品失败");
+    }
   };
 
   const formatDate = (d) => {

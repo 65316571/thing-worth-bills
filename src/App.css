@@ -474,6 +474,89 @@ input, select, textarea { font-family: inherit; }
   font-size: 13px;
 }
 
+.desktop-notice {
+  margin-bottom: 16px;
+}
+
+.desktop-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.desktop-panel-subtitle {
+  margin-top: 6px;
+  color: var(--ink-3);
+  font-size: 13px;
+  font-weight: 300;
+}
+
+.desktop-primary-btn {
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(200,75,49,0.18);
+}
+
+.desktop-primary-btn:hover {
+  background: var(--accent-2);
+}
+
+.desktop-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.desktop-action-btn {
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.desktop-action-btn:hover {
+  border-color: var(--border-strong);
+}
+
+.desktop-action-btn.danger {
+  border-color: rgba(153, 27, 27, 0.18);
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.desktop-form-card {
+  padding: 18px;
+  margin-bottom: 18px;
+  background: rgba(253, 250, 245, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.desktop-form-grid {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.desktop-form-grid.two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.desktop-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
 .desktop-wish-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -482,6 +565,20 @@ input, select, textarea { font-family: inherit; }
 
 .desktop-wish-card {
   padding: 20px;
+}
+
+.desktop-wish-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.desktop-wish-meta {
+  margin-top: 8px;
+  color: var(--ink-4);
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .desktop-menu-btn:hover,
@@ -1118,6 +1215,21 @@ input, select, textarea { font-family: inherit; }
 
   .desktop-header {
     flex-direction: column;
+  }
+
+  .desktop-panel-head,
+  .desktop-wish-card-head,
+  .desktop-form-grid.two-col {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .desktop-form-actions {
+    justify-content: stretch;
+  }
+
+  .desktop-primary-btn {
+    width: 100%;
   }
 
   .mode-toolbar {

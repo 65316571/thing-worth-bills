@@ -6,6 +6,7 @@ import Stats from "./pages/Stats";
 import WishList from "./pages/WishList";
 import { ItemProvider } from "./context/ItemContext";
 import { useItems } from "./context/ItemContext";
+import { CATEGORIES } from "./utils/calc";
 import "./App.css";
 
 export default function App() {
@@ -22,7 +23,25 @@ function AppContent() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [desktopTab, setDesktopTab] = useState("overview");
-  const { items, wishes } = useItems();
+  const [desktopItemFormOpen, setDesktopItemFormOpen] = useState(false);
+  const [desktopWishFormOpen, setDesktopWishFormOpen] = useState(false);
+  const [desktopWishForm, setDesktopWishForm] = useState({
+    name: "",
+    targetPrice: "",
+    category: "",
+    note: "",
+  });
+  const {
+    items,
+    wishes,
+    loading,
+    error,
+    addWish,
+    deleteWish,
+    deleteItem,
+    deactivateItem,
+    reactivateItem,
+  } = useItems();
 
   const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 900;
   const recommendedMode = isMobileDevice ? "mobile" : "desktop";
@@ -45,6 +64,12 @@ function AppContent() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4);
 
+  const resetDesktopItemView = () => {
+    setSelectedItem(null);
+    setEditItem(null);
+    setDesktopItemFormOpen(false);
+  };
+
   const navigate = (to, data = null) => {
     if (to === "detail") setSelectedItem(data);
     if (to === "edit") {
@@ -57,10 +82,102 @@ function AppContent() {
     if (to !== "add") setEditItem(null);
   };
 
+  const desktopNavigate = (to, data = null) => {
+    if (to === "detail") {
+      setDesktopTab("items");
+      setSelectedItem(data);
+      setEditItem(null);
+      setDesktopItemFormOpen(false);
+      return;
+    }
+
+    if (to === "edit") {
+      setDesktopTab("items");
+      setEditItem(data);
+      setSelectedItem(null);
+      setDesktopItemFormOpen(true);
+      return;
+    }
+
+    if (to === "add") {
+      setDesktopTab("items");
+      setEditItem(null);
+      setSelectedItem(null);
+      setDesktopItemFormOpen(true);
+      return;
+    }
+
+    if (to === "list") {
+      setDesktopTab("items");
+      resetDesktopItemView();
+      return;
+    }
+
+    if (to === "wish") {
+      setDesktopTab("wishes");
+      resetDesktopItemView();
+      return;
+    }
+
+    resetDesktopItemView();
+    setDesktopTab(to);
+  };
+
+  const setDesktopWishField = (key, value) => {
+    setDesktopWishForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleDesktopWishAdd = async () => {
+    if (!desktopWishForm.name.trim() || !desktopWishForm.targetPrice) {
+      alert("请填写物品名称和目标价格");
+      return;
+    }
+
+    try {
+      await addWish({
+        ...desktopWishForm,
+        targetPrice: parseFloat(desktopWishForm.targetPrice),
+      });
+      setDesktopWishForm({ name: "", targetPrice: "", category: "", note: "" });
+      setDesktopWishFormOpen(false);
+    } catch (requestError) {
+      alert(requestError.message || "添加心愿失败");
+    }
+  };
+
+  const handleDesktopDeleteItem = async (item) => {
+    if (!window.confirm(`确定删除「${item.name}」吗？`)) {
+      return;
+    }
+
+    try {
+      await deleteItem(item.id);
+      resetDesktopItemView();
+    } catch (requestError) {
+      alert(requestError.message || "删除物品失败");
+    }
+  };
+
+  const handleDesktopToggleStatus = async (item) => {
+    try {
+      if (item.status === "active") {
+        if (!window.confirm(`标记「${item.name}」为已停用？`)) {
+          return;
+        }
+        await deactivateItem(item.id);
+      } else {
+        await reactivateItem(item.id);
+      }
+    } catch (requestError) {
+      alert(requestError.message || "更新物品状态失败");
+    }
+  };
+
   const chooseMode = (nextMode) => {
     setMode(nextMode);
     if (nextMode === "desktop") {
       setDesktopTab("overview");
+      resetDesktopItemView();
     } else {
       setPage("list");
       setSelectedItem(null);
@@ -159,6 +276,9 @@ function AppContent() {
             </div>
           </header>
 
+          {error && <div className="notice desktop-notice">接口异常：{error}</div>}
+          {loading && <div className="notice desktop-notice">数据加载中...</div>}
+
           {desktopTab === "overview" && (
             <>
               <section className="desktop-stats-grid">
@@ -220,43 +340,148 @@ function AppContent() {
           )}
 
           {desktopTab === "items" && (
-            <section className="desktop-panel">
-              <div className="desktop-panel-title">全部物品</div>
-              <div className="desktop-table-wrap">
-                <table className="desktop-table">
-                  <thead>
-                    <tr>
-                      <th>名称</th>
-                      <th>分类</th>
-                      <th>购买日期</th>
-                      <th>状态</th>
-                      <th>价格</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.name}</td>
-                        <td>{item.category}</td>
-                        <td>{item.buyDate}</td>
-                        <td>{item.status === "active" ? "使用中" : "已停用"}</td>
-                        <td>¥{Number(item.price || 0).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+            <>
+              {selectedItem ? (
+                <ItemDetail item={selectedItem} navigate={desktopNavigate} />
+              ) : desktopItemFormOpen ? (
+                <AddItem navigate={desktopNavigate} editItem={editItem} />
+              ) : (
+                <section className="desktop-panel">
+                  <div className="desktop-panel-head">
+                    <div>
+                      <div className="desktop-panel-title">全部物品</div>
+                      <div className="desktop-panel-subtitle">电脑端已与 APP 端同步，可直接管理物品。</div>
+                    </div>
+                    <button className="desktop-primary-btn" onClick={() => desktopNavigate("add")}>
+                      + 新增物品
+                    </button>
+                  </div>
+                  <div className="desktop-table-wrap">
+                    <table className="desktop-table">
+                      <thead>
+                        <tr>
+                          <th>名称</th>
+                          <th>分类</th>
+                          <th>购买日期</th>
+                          <th>状态</th>
+                          <th>价格</th>
+                          <th>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((item) => (
+                          <tr key={item.id}>
+                            <td>{item.name}</td>
+                            <td>{item.category}</td>
+                            <td>{item.buyDate}</td>
+                            <td>{item.status === "active" ? "使用中" : "已停用"}</td>
+                            <td>¥{Number(item.price || 0).toFixed(2)}</td>
+                            <td>
+                              <div className="desktop-action-group">
+                                <button className="desktop-action-btn" onClick={() => desktopNavigate("detail", item)}>
+                                  查看
+                                </button>
+                                <button className="desktop-action-btn" onClick={() => desktopNavigate("edit", item)}>
+                                  编辑
+                                </button>
+                                <button className="desktop-action-btn" onClick={() => handleDesktopToggleStatus(item)}>
+                                  {item.status === "active" ? "停用" : "恢复"}
+                                </button>
+                                <button className="desktop-action-btn danger" onClick={() => handleDesktopDeleteItem(item)}>
+                                  删除
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
+            </>
           )}
 
           {desktopTab === "wishes" && (
             <section className="desktop-panel">
-              <div className="desktop-panel-title">心愿单</div>
+              <div className="desktop-panel-head">
+                <div>
+                  <div className="desktop-panel-title">心愿单</div>
+                  <div className="desktop-panel-subtitle">与 APP 端共用同一套新增与删除接口。</div>
+                </div>
+                <button className="desktop-primary-btn" onClick={() => setDesktopWishFormOpen((value) => !value)}>
+                  {desktopWishFormOpen ? "收起表单" : "+ 添加心愿"}
+                </button>
+              </div>
+
+              {desktopWishFormOpen && (
+                <div className="desktop-form-card">
+                  <div className="desktop-form-grid two-col">
+                    <input
+                      className="form-input"
+                      placeholder="物品名称 *"
+                      value={desktopWishForm.name}
+                      onChange={(e) => setDesktopWishField("name", e.target.value)}
+                    />
+                    <input
+                      className="form-input"
+                      type="number"
+                      placeholder="目标价格 *"
+                      value={desktopWishForm.targetPrice}
+                      onChange={(e) => setDesktopWishField("targetPrice", e.target.value)}
+                    />
+                  </div>
+                  <div className="desktop-form-grid two-col">
+                    <select
+                      className="form-select"
+                      value={desktopWishForm.category}
+                      onChange={(e) => setDesktopWishField("category", e.target.value)}
+                    >
+                      <option value="">选择分类</option>
+                      {CATEGORIES.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                    <div />
+                  </div>
+                  <textarea
+                    className="form-textarea"
+                    placeholder="备注（可选）"
+                    value={desktopWishForm.note}
+                    onChange={(e) => setDesktopWishField("note", e.target.value)}
+                  />
+                  <div className="desktop-form-actions">
+                    <button className="desktop-primary-btn" onClick={handleDesktopWishAdd}>
+                      保存心愿
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="desktop-wish-grid">
                 {wishes.map((wish) => (
                   <article className="desktop-wish-card" key={wish.id}>
-                    <div className="desktop-wish-name">{wish.name}</div>
-                    <div className="desktop-wish-price">目标价 ¥{Number(wish.targetPrice || 0).toFixed(2)}</div>
+                    <div className="desktop-wish-card-head">
+                      <div>
+                        <div className="desktop-wish-name">{wish.name}</div>
+                        <div className="desktop-wish-price">目标价 ¥{Number(wish.targetPrice || 0).toFixed(2)}</div>
+                      </div>
+                      <button
+                        className="desktop-action-btn danger"
+                        onClick={async () => {
+                          try {
+                            await deleteWish(wish.id);
+                          } catch (requestError) {
+                            alert(requestError.message || "删除心愿失败");
+                          }
+                        }}
+                      >
+                        删除
+                      </button>
+                    </div>
+                    <div className="desktop-wish-meta">{wish.category || "未分类"}</div>
                     <div className="desktop-wish-note">{wish.note || "暂无备注"}</div>
                   </article>
                 ))}

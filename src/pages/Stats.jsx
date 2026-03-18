@@ -2,7 +2,7 @@ import { useItems } from "../context/ItemContext";
 import { calcDays, calcDailyCost, CATEGORY_ICONS } from "../utils/calc";
 
 export default function Stats({ navigate }) {
-  const { items } = useItems();
+  const { items, loading, error } = useItems();
 
   const activeItems = items.filter((i) => i.status === "active");
   const total = items.length;
@@ -45,6 +45,9 @@ export default function Stats({ navigate }) {
       </div>
 
       <div className="scroll-area">
+        {loading && <div className="notice">数据加载中...</div>}
+        {error && <div className="notice">接口异常：{error}</div>}
+
         {/* Summary Cards */}
         <div className="stats-summary">
           <div className="summary-card dark">

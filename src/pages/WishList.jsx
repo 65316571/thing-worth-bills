@@ -3,20 +3,25 @@ import { useItems } from "../context/ItemContext";
 import { CATEGORIES, CATEGORY_ICONS } from "../utils/calc";
 
 export default function WishList({ navigate }) {
-  const { wishes, addWish, deleteWish } = useItems();
+  const { wishes, addWish, deleteWish, loading, error } = useItems();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", targetPrice: "", category: "", note: "" });
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!form.name.trim() || !form.targetPrice) {
       alert("请填写物品名称和目标价格");
       return;
     }
-    addWish({ ...form, targetPrice: parseFloat(form.targetPrice) });
-    setForm({ name: "", targetPrice: "", category: "", note: "" });
-    setShowForm(false);
+
+    try {
+      await addWish({ ...form, targetPrice: parseFloat(form.targetPrice) });
+      setForm({ name: "", targetPrice: "", category: "", note: "" });
+      setShowForm(false);
+    } catch (requestError) {
+      alert(requestError.message || "添加心愿失败");
+    }
   };
 
   return (
@@ -44,6 +49,9 @@ export default function WishList({ navigate }) {
       </div>
 
       <div className="scroll-area">
+        {loading && <div className="notice">数据加载中...</div>}
+        {error && <div className="notice">接口异常：{error}</div>}
+
         {/* Add form */}
         {showForm && (
           <div style={{
@@ -129,7 +137,18 @@ export default function WishList({ navigate }) {
                   )}
                 </div>
               </div>
-              <button className="wish-delete" onClick={() => deleteWish(wish.id)}>×</button>
+              <button
+                className="wish-delete"
+                onClick={async () => {
+                  try {
+                    await deleteWish(wish.id);
+                  } catch (requestError) {
+                    alert(requestError.message || "删除心愿失败");
+                  }
+                }}
+              >
+                ×
+              </button>
             </div>
           ))
         )}

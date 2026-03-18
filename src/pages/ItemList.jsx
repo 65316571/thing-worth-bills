@@ -23,7 +23,7 @@ function sortItems(items, sortKey) {
 }
 
 export default function ItemList({ navigate }) {
-  const { items } = useItems();
+  const { items, loading, error } = useItems();
   const [sort, setSort] = useState("days_desc");
   const [catFilter, setCatFilter] = useState("全部");
   const [showInactive, setShowInactive] = useState(true);
@@ -90,6 +90,9 @@ export default function ItemList({ navigate }) {
       </div>
 
       <div className="scroll-area">
+        {loading && <div className="notice">数据加载中...</div>}
+        {error && <div className="notice">接口异常：{error}</div>}
+
         {sorted.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">📦</div>
