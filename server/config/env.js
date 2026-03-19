@@ -15,6 +15,10 @@ function toBoolean(value, fallback = false) {
   return ["true", "1", "yes", "on"].includes(String(value).toLowerCase());
 }
 
+function trimTrailingSlash(value) {
+  return value ? String(value).replace(/\/+$/, "") : "";
+}
+
 export const env = {
   appName: process.env.APP_NAME || "ThingWorthBills",
   nodeEnv: process.env.NODE_ENV || "development",
@@ -31,5 +35,7 @@ export const env = {
     region: process.env.OSS_REGION || "",
     accessKeyId: process.env.OSS_ACCESS_KEY_ID || "",
     accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET || "",
+    bucket: process.env.OSS_BUCKET || "",
+    publicBaseUrl: trimTrailingSlash(process.env.OSS_PUBLIC_URL || ""),
   },
 };

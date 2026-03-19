@@ -3,6 +3,10 @@ import { api } from "../utils/api";
 
 const ItemContext = createContext();
 
+function replaceItemById(items, nextItem) {
+  return items.map((item) => (item.id === nextItem.id ? nextItem : item));
+}
+
 export function ItemProvider({ children }) {
   const [items, setItems] = useState([]);
   const [wishes, setWishes] = useState([]);
@@ -44,7 +48,7 @@ export function ItemProvider({ children }) {
       ...currentItem,
       ...data,
     });
-    setItems((prev) => prev.map((it) => (it.id === id ? response.item : it)));
+    setItems((prev) => replaceItemById(prev, response.item));
     return response.item;
   };
 
@@ -55,14 +59,43 @@ export function ItemProvider({ children }) {
 
   const deactivateItem = async (id) => {
     const response = await api.updateItemStatus(id, "inactive");
-    setItems((prev) => prev.map((it) => (it.id === id ? response.item : it)));
+    setItems((prev) => replaceItemById(prev, response.item));
     return response.item;
   };
 
   const reactivateItem = async (id) => {
     const response = await api.updateItemStatus(id, "active");
-    setItems((prev) => prev.map((it) => (it.id === id ? response.item : it)));
+    setItems((prev) => replaceItemById(prev, response.item));
     return response.item;
+  };
+
+  const addItemAsset = async (id, asset) => {
+    const response = await api.createItemAsset(id, asset);
+    setItems((prev) => prev.map((item) => {
+      if (item.id !== id) {
+        return item;
+      }
+
+      return {
+        ...item,
+        assets: [response.asset, ...(item.assets || [])],
+      };
+    }));
+    return response.asset;
+  };
+
+  const deleteItemAsset = async (id, assetId) => {
+    await api.deleteItemAsset(id, assetId);
+    setItems((prev) => prev.map((item) => {
+      if (item.id !== id) {
+        return item;
+      }
+
+      return {
+        ...item,
+        assets: (item.assets || []).filter((asset) => asset.id !== assetId),
+      };
+    }));
   };
 
   const addWish = async (wish) => {
@@ -88,6 +121,8 @@ export function ItemProvider({ children }) {
       deleteItem,
       deactivateItem,
       reactivateItem,
+      addItemAsset,
+      deleteItemAsset,
       addWish,
       deleteWish,
     }),

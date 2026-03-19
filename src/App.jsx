@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ItemList from "./pages/ItemList";
 import AddItem from "./pages/AddItem";
 import ItemDetail from "./pages/ItemDetail";
@@ -6,8 +6,11 @@ import Stats from "./pages/Stats";
 import WishList from "./pages/WishList";
 import { ItemProvider } from "./context/ItemContext";
 import { useItems } from "./context/ItemContext";
-import { CATEGORIES } from "./utils/calc";
+import { CATEGORIES, SORT_OPTIONS, calcDays, calcDailyCost } from "./utils/calc";
+import { api } from "./utils/api";
 import "./App.css";
+
+const DESKTOP_ALL_CATS = ["全部", ...CATEGORIES, "未分类"];
 
 export default function App() {
   return (
@@ -19,12 +22,25 @@ export default function App() {
 
 function AppContent() {
   const [mode, setMode] = useState("chooser");
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === "undefined") {
+      return "light";
+    }
+
+    return window.localStorage.getItem("thing-worth-theme") || "light";
+  });
   const [page, setPage] = useState("list");
   const [selectedItem, setSelectedItem] = useState(null);
   const [editItem, setEditItem] = useState(null);
-  const [desktopTab, setDesktopTab] = useState("overview");
+  const [desktopDetailReturnTab, setDesktopDetailReturnTab] = useState("items");
+  const [desktopTab, setDesktopTab] = useState("value");
+  const [desktopOverviewCategory, setDesktopOverviewCategory] = useState("全部");
+  const [desktopOverviewSort, setDesktopOverviewSort] = useState("date_desc");
+  const [desktopOverviewStatus, setDesktopOverviewStatus] = useState("all");
   const [desktopItemFormOpen, setDesktopItemFormOpen] = useState(false);
   const [desktopWishFormOpen, setDesktopWishFormOpen] = useState(false);
+  const [desktopValueImageIndex, setDesktopValueImageIndex] = useState({});
+  const [desktopValueUploading, setDesktopValueUploading] = useState({});
   const [desktopWishForm, setDesktopWishForm] = useState({
     name: "",
     targetPrice: "",
@@ -39,21 +55,21 @@ function AppContent() {
     addWish,
     deleteWish,
     deleteItem,
-    deactivateItem,
-    reactivateItem,
+    addItemAsset,
   } = useItems();
 
   const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 900;
   const recommendedMode = isMobileDevice ? "mobile" : "desktop";
 
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    window.localStorage.setItem("thing-worth-theme", theme);
+  }, [theme]);
+
   const activeItems = items.filter((item) => item.status === "active");
   const inactiveItems = items.filter((item) => item.status === "inactive");
   const totalValue = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
   const activeValue = activeItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
-  const latestItems = [...items]
-    .sort((a, b) => new Date(b.buyDate) - new Date(a.buyDate))
-    .slice(0, 5);
-
   const categorySummary = items.reduce((acc, item) => {
     const key = item.category || "未分类";
     acc[key] = (acc[key] || 0) + Number(item.price || 0);
@@ -63,11 +79,68 @@ function AppContent() {
   const topCategories = Object.entries(categorySummary)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4);
+  const latestItems = [...items]
+    .sort((a, b) => new Date(b.buyDate) - new Date(a.buyDate))
+    .slice(0, 5);
+  const recentChangedItems = [...items]
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || b.buyDate) - new Date(a.updatedAt || a.createdAt || a.buyDate))
+    .slice(0, 6);
+
+  const desktopOverviewItems = [...items]
+    .filter((item) => desktopOverviewCategory === "全部" || (item.category || "未分类") === desktopOverviewCategory)
+    .filter((item) => desktopOverviewStatus === "all" || item.status === desktopOverviewStatus)
+    .sort((a, b) => {
+      const daysA = calcDays(a.buyDate, a.stopDate);
+      const daysB = calcDays(b.buyDate, b.stopDate);
+      const costA = Number(calcDailyCost(Number(a.price || 0), daysA));
+      const costB = Number(calcDailyCost(Number(b.price || 0), daysB));
+
+      switch (desktopOverviewSort) {
+        case "days_desc":
+          return daysB - daysA;
+        case "cost_asc":
+          return costA - costB;
+        case "cost_desc":
+          return costB - costA;
+        case "price_desc":
+          return Number(b.price || 0) - Number(a.price || 0);
+        case "price_asc":
+          return Number(a.price || 0) - Number(b.price || 0);
+        case "date_desc":
+        default:
+          return new Date(b.buyDate) - new Date(a.buyDate);
+      }
+    });
+
+  const desktopOverviewSpend = desktopOverviewItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const desktopOverviewActiveCount = desktopOverviewItems.filter((item) => item.status === "active").length;
+  const desktopOverviewInactiveCount = desktopOverviewItems.filter((item) => item.status === "inactive").length;
+  const desktopOverviewBestValue = [...desktopOverviewItems]
+    .filter((item) => item.status === "active")
+    .sort((a, b) => {
+      const costA = Number(calcDailyCost(Number(a.price || 0), calcDays(a.buyDate, a.stopDate)));
+      const costB = Number(calcDailyCost(Number(b.price || 0), calcDays(b.buyDate, b.stopDate)));
+      return costA - costB;
+    })[0];
+  const desktopOverviewLongestOwned = [...desktopOverviewItems]
+    .sort((a, b) => calcDays(b.buyDate, b.stopDate) - calcDays(a.buyDate, a.stopDate))[0];
 
   const resetDesktopItemView = () => {
     setSelectedItem(null);
     setEditItem(null);
     setDesktopItemFormOpen(false);
+  };
+
+  const openDesktopDetail = (item, sourceTab = "items") => {
+    setDesktopDetailReturnTab(sourceTab);
+    setDesktopTab("items");
+    setSelectedItem(item);
+    setEditItem(null);
+    setDesktopItemFormOpen(false);
+  };
+
+  const toggleTheme = () => {
+    setTheme((current) => (current === "light" ? "dark" : "light"));
   };
 
   const navigate = (to, data = null) => {
@@ -84,10 +157,7 @@ function AppContent() {
 
   const desktopNavigate = (to, data = null) => {
     if (to === "detail") {
-      setDesktopTab("items");
-      setSelectedItem(data);
-      setEditItem(null);
-      setDesktopItemFormOpen(false);
+      openDesktopDetail(data, desktopTab === "value" ? "value" : "items");
       return;
     }
 
@@ -108,7 +178,7 @@ function AppContent() {
     }
 
     if (to === "list") {
-      setDesktopTab("items");
+      setDesktopTab(desktopDetailReturnTab || "items");
       resetDesktopItemView();
       return;
     }
@@ -125,6 +195,70 @@ function AppContent() {
 
   const setDesktopWishField = (key, value) => {
     setDesktopWishForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const getDesktopValueImages = (item) => (item.assets || []).filter((asset) => asset.type === "image" && asset.url);
+
+  const getDesktopValueImageIndex = (itemId, imageCount) => {
+    if (!imageCount) {
+      return 0;
+    }
+
+    const currentIndex = desktopValueImageIndex[itemId] || 0;
+    return ((currentIndex % imageCount) + imageCount) % imageCount;
+  };
+
+  const changeDesktopValueImage = (event, itemId, imageCount, direction) => {
+    event.stopPropagation();
+
+    if (!imageCount) {
+      return;
+    }
+
+    setDesktopValueImageIndex((prev) => {
+      const currentIndex = prev[itemId] || 0;
+      const nextIndex = (currentIndex + direction + imageCount) % imageCount;
+      return {
+        ...prev,
+        [itemId]: nextIndex,
+      };
+    });
+  };
+
+  const handleDesktopValueImageUpload = async (event, item) => {
+    event.stopPropagation();
+
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setDesktopValueUploading((prev) => ({
+      ...prev,
+      [item.id]: true,
+    }));
+
+    try {
+      const url = await api.uploadFileToOss(file);
+      await addItemAsset(item.id, {
+        type: "image",
+        title: file.name,
+        url,
+      });
+      setDesktopValueImageIndex((prev) => ({
+        ...prev,
+        [item.id]: 0,
+      }));
+    } catch (uploadError) {
+      alert(uploadError.message || "上传图片失败");
+    } finally {
+      setDesktopValueUploading((prev) => ({
+        ...prev,
+        [item.id]: false,
+      }));
+    }
   };
 
   const handleDesktopWishAdd = async () => {
@@ -158,25 +292,10 @@ function AppContent() {
     }
   };
 
-  const handleDesktopToggleStatus = async (item) => {
-    try {
-      if (item.status === "active") {
-        if (!window.confirm(`标记「${item.name}」为已停用？`)) {
-          return;
-        }
-        await deactivateItem(item.id);
-      } else {
-        await reactivateItem(item.id);
-      }
-    } catch (requestError) {
-      alert(requestError.message || "更新物品状态失败");
-    }
-  };
-
   const chooseMode = (nextMode) => {
     setMode(nextMode);
     if (nextMode === "desktop") {
-      setDesktopTab("overview");
+      setDesktopTab("value");
       resetDesktopItemView();
     } else {
       setPage("list");
@@ -200,12 +319,18 @@ function AppContent() {
             <strong>{recommendedMode === "mobile" ? " APP 卡片页" : " 电脑网站页"}</strong>
           </div>
 
+          <button className="theme-toggle entry-theme-toggle" onClick={toggleTheme}>
+            <span title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}>
+              {theme === "light" ? "🌙" : "☀️"}
+            </span>
+          </button>
+
           <div className="entry-options">
             <button
               className={`entry-option ${recommendedMode === "mobile" ? "recommended" : ""}`}
               onClick={() => chooseMode("mobile")}
             >
-              <span className="entry-option-tag">APP端</span>
+              <span className="entry-option-tag">移动端</span>
               <strong>卡片页面</strong>
               <span>适合手机浏览，延续你当前的卡片式操作体验。</span>
             </button>
@@ -235,6 +360,12 @@ function AppContent() {
 
           <div className="desktop-menu">
             <button
+              className={`desktop-menu-btn ${desktopTab === "value" ? "active" : ""}`}
+              onClick={() => setDesktopTab("value")}
+            >
+              主页
+            </button>
+            <button
               className={`desktop-menu-btn ${desktopTab === "overview" ? "active" : ""}`}
               onClick={() => setDesktopTab("overview")}
             >
@@ -244,7 +375,7 @@ function AppContent() {
               className={`desktop-menu-btn ${desktopTab === "items" ? "active" : ""}`}
               onClick={() => setDesktopTab("items")}
             >
-              物品清单
+              清单
             </button>
             <button
               className={`desktop-menu-btn ${desktopTab === "wishes" ? "active" : ""}`}
@@ -263,13 +394,24 @@ function AppContent() {
           <header className="desktop-header">
             <div>
               <h2 className="desktop-title">
-                {desktopTab === "overview" && "资产总览"}
-                {desktopTab === "items" && "物品清单"}
+                {desktopTab === "value" && "主页"}
+                {desktopTab === "overview" && "总览"}
+                {desktopTab === "items" && "清单"}
                 {desktopTab === "wishes" && "心愿单"}
               </h2>
-              <p className="desktop-subtitle">电脑端采用常规网站布局，适合更高效地查看与管理数据。</p>
+              <p className="desktop-subtitle">
+                {desktopTab === "value" && "直观查看每件物品的购买价值、拥有天数与每日成本。"}
+                {desktopTab === "overview" && "以宏观视角查看资产分布、近期变更和全局统计。"}
+                {desktopTab === "items" && "统一管理物品资料、编辑信息与维护附件。"}
+                {desktopTab === "wishes" && "维护你的待购清单与目标价格。"}
+              </p>
             </div>
             <div className="desktop-header-actions">
+              <button className="theme-toggle" onClick={toggleTheme}>
+                <span title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}>
+                  {theme === "light" ? "🌙" : "☀️"}
+                </span>
+              </button>
               <button className="desktop-header-btn" onClick={() => chooseMode("mobile")}>
                 切换到 APP 卡片页
               </button>
@@ -278,6 +420,155 @@ function AppContent() {
 
           {error && <div className="notice desktop-notice">接口异常：{error}</div>}
           {loading && <div className="notice desktop-notice">数据加载中...</div>}
+
+          {desktopTab === "value" && (
+            <>
+              <section className="desktop-panel">
+                <div className="desktop-panel-head desktop-value-panel-head">
+                  <div>
+                    <div className="desktop-panel-title">物值账明细</div>
+                    <div className="desktop-panel-subtitle">按分类、状态和排序方式筛选你要查看的物品卡片。</div>
+                  </div>
+                  <div className="desktop-value-toolbar">
+                    <select
+                      className="form-select"
+                      value={desktopOverviewCategory}
+                      onChange={(e) => setDesktopOverviewCategory(e.target.value)}
+                    >
+                      {DESKTOP_ALL_CATS.filter((value, index, array) => array.indexOf(value) === index).map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="form-select"
+                      value={desktopOverviewSort}
+                      onChange={(e) => setDesktopOverviewSort(e.target.value)}
+                    >
+                      {SORT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="desktop-segmented">
+                      <button
+                        className={`desktop-segmented-btn ${desktopOverviewStatus === "all" ? "active" : ""}`}
+                        onClick={() => setDesktopOverviewStatus("all")}
+                      >
+                        全部
+                      </button>
+                      <button
+                        className={`desktop-segmented-btn ${desktopOverviewStatus === "active" ? "active" : ""}`}
+                        onClick={() => setDesktopOverviewStatus("active")}
+                      >
+                        活跃
+                      </button>
+                      <button
+                        className={`desktop-segmented-btn ${desktopOverviewStatus === "inactive" ? "active" : ""}`}
+                        onClick={() => setDesktopOverviewStatus("inactive")}
+                      >
+                        停用
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="desktop-panel-subtitle desktop-panel-subtitle-tight">
+                  当前条件：{desktopOverviewCategory} · {desktopOverviewStatus === "all" ? "全部状态" : desktopOverviewStatus === "active" ? "活跃" : "停用"}
+                </div>
+                <div className="desktop-value-grid desktop-value-grid-single">
+                  {desktopOverviewItems.length === 0 ? (
+                    <div className="desktop-empty-inline">当前筛选条件下暂无物品。</div>
+                  ) : (
+                    desktopOverviewItems.map((item) => {
+                      const images = getDesktopValueImages(item);
+                      const imageIndex = getDesktopValueImageIndex(item.id, images.length);
+                      const activeImage = images[imageIndex];
+                      const isUploadingImage = Boolean(desktopValueUploading[item.id]);
+
+                      return (
+                      <div className="desktop-value-card" key={item.id} onClick={() => openDesktopDetail(item, "value")}>
+                        <div className="desktop-value-card-body">
+                          <div className="desktop-value-content">
+                            <div className="desktop-value-card-head">
+                              <div>
+                                <div className="desktop-list-name">{item.name}</div>
+                                <div className="desktop-value-meta-row">
+                                  <div className="desktop-list-meta">
+                                    {(item.category || "未分类")} · {item.purchaseChannel || "未填写购买渠道"}
+                                  </div>
+                                  <div className={`item-status-badge ${item.status === "inactive" ? "inactive" : ""}`}>
+                                    {item.status === "active" ? "使用中" : "已停用"}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="desktop-value-stats">
+                              <div className="desktop-value-stat">
+                                <strong>¥{Number(item.price || 0).toFixed(2)}</strong>
+                                <span>购买价格</span>
+                              </div>
+                              <div className="desktop-value-stat">
+                                <strong>{calcDays(item.buyDate, item.stopDate)}</strong>
+                                <span>拥有天数</span>
+                              </div>
+                              <div className="desktop-value-stat accent">
+                                <strong>¥{calcDailyCost(Number(item.price || 0), calcDays(item.buyDate, item.stopDate))}</strong>
+                                <span>每日成本</span>
+                              </div>
+                            </div>
+                            <div className="desktop-value-note">
+                              <span className="desktop-value-note-label">笔记</span>
+                              <span className="desktop-value-note-text">{item.note || "暂无笔记"}</span>
+                            </div>
+                          </div>
+                          <div className="desktop-value-media" onClick={(event) => event.stopPropagation()}>
+                            {activeImage ? (
+                              <>
+                                <img className="desktop-value-media-image" src={activeImage.url} alt={activeImage.title || item.name} />
+                                {images.length > 1 && (
+                                  <>
+                                    <button
+                                      className="desktop-value-media-nav desktop-value-media-nav-prev"
+                                      onClick={(event) => changeDesktopValueImage(event, item.id, images.length, -1)}
+                                    >
+                                      ←
+                                    </button>
+                                    <button
+                                      className="desktop-value-media-nav desktop-value-media-nav-next"
+                                      onClick={(event) => changeDesktopValueImage(event, item.id, images.length, 1)}
+                                    >
+                                      →
+                                    </button>
+                                    <div className="desktop-value-media-indicator">
+                                      {imageIndex + 1}/{images.length}
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            ) : (
+                              <label className={`desktop-value-media-empty ${isUploadingImage ? "uploading" : ""}`}>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  hidden
+                                  disabled={isUploadingImage}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onChange={(event) => handleDesktopValueImageUpload(event, item)}
+                                />
+                                {isUploadingImage ? "上传中..." : "暂无关联图片，点击上传"}
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )})
+                  )}
+                </div>
+              </section>
+            </>
+          )}
 
           {desktopTab === "overview" && (
             <>
@@ -291,7 +582,7 @@ function AppContent() {
                   <strong>{activeItems.length}</strong>
                 </article>
                 <article className="desktop-stat-panel">
-                  <span>闲置物品</span>
+                  <span>停用物品</span>
                   <strong>{inactiveItems.length}</strong>
                 </article>
                 <article className="desktop-stat-panel">
@@ -300,26 +591,102 @@ function AppContent() {
                 </article>
               </section>
 
+              <section className="desktop-panel desktop-overview-tools">
+                <div className="desktop-panel-head">
+                  <div>
+                    <div className="desktop-panel-title">统计筛选器</div>
+                    <div className="desktop-panel-subtitle">按分类、状态和排序方式动态查看总览统计结果。</div>
+                  </div>
+                </div>
+
+                <div className="desktop-toolbar-grid">
+                  <div className="desktop-toolbar-field">
+                    <label className="desktop-toolbar-label">分类筛选</label>
+                    <select
+                      className="form-select"
+                      value={desktopOverviewCategory}
+                      onChange={(e) => setDesktopOverviewCategory(e.target.value)}
+                    >
+                      {DESKTOP_ALL_CATS.filter((value, index, array) => array.indexOf(value) === index).map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="desktop-toolbar-field">
+                    <label className="desktop-toolbar-label">排序方式</label>
+                    <select
+                      className="form-select"
+                      value={desktopOverviewSort}
+                      onChange={(e) => setDesktopOverviewSort(e.target.value)}
+                    >
+                      {SORT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="desktop-toolbar-field desktop-toolbar-field-wide">
+                    <label className="desktop-toolbar-label">状态切换</label>
+                    <div className="desktop-segmented">
+                      <button
+                        className={`desktop-segmented-btn ${desktopOverviewStatus === "all" ? "active" : ""}`}
+                        onClick={() => setDesktopOverviewStatus("all")}
+                      >
+                        全部
+                      </button>
+                      <button
+                        className={`desktop-segmented-btn ${desktopOverviewStatus === "active" ? "active" : ""}`}
+                        onClick={() => setDesktopOverviewStatus("active")}
+                      >
+                        活跃
+                      </button>
+                      <button
+                        className={`desktop-segmented-btn ${desktopOverviewStatus === "inactive" ? "active" : ""}`}
+                        onClick={() => setDesktopOverviewStatus("inactive")}
+                      >
+                        停用
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
               <section className="desktop-content-grid">
                 <article className="desktop-panel">
-                  <div className="desktop-panel-title">最近新增</div>
+                  <div className="desktop-panel-title">最近变更</div>
                   <div className="desktop-list">
-                    {latestItems.map((item) => (
+                    {recentChangedItems.map((item) => (
                       <div className="desktop-list-row" key={item.id}>
                         <div>
                           <div className="desktop-list-name">{item.name}</div>
-                          <div className="desktop-list-meta">{item.category} · {item.buyDate}</div>
+                          <div className="desktop-list-meta">
+                            {(item.category || "未分类")} · {item.status === "active" ? "活跃中" : "已停用"} · 最近更新 {String(item.updatedAt || item.createdAt || item.buyDate).slice(0, 10)}
+                          </div>
                         </div>
                         <div className="desktop-list-price">¥{Number(item.price || 0).toFixed(2)}</div>
                       </div>
                     ))}
                   </div>
                 </article>
+              </section>
 
+              <section className="desktop-content-grid desktop-overview-summary-grid">
                 <article className="desktop-panel">
                   <div className="desktop-panel-title">分类分布</div>
                   <div className="desktop-category-list">
-                    {topCategories.map(([category, value]) => (
+                    {(desktopOverviewItems.length ? Object.entries(desktopOverviewItems.reduce((acc, item) => {
+                      const key = item.category || "未分类";
+                      acc[key] = (acc[key] || 0) + Number(item.price || 0);
+                      return acc;
+                    }, {})) : topCategories)
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(0, 5)
+                      .map(([category, value]) => (
                       <div className="desktop-category-row" key={category}>
                         <div className="desktop-category-head">
                           <span>{category}</span>
@@ -328,7 +695,7 @@ function AppContent() {
                         <div className="desktop-category-track">
                           <div
                             className="desktop-category-fill"
-                            style={{ width: `${totalValue ? (value / totalValue) * 100 : 0}%` }}
+                            style={{ width: `${desktopOverviewSpend ? (value / desktopOverviewSpend) * 100 : totalValue ? (value / totalValue) * 100 : 0}%` }}
                           />
                         </div>
                       </div>
@@ -342,7 +709,7 @@ function AppContent() {
           {desktopTab === "items" && (
             <>
               {selectedItem ? (
-                <ItemDetail item={selectedItem} navigate={desktopNavigate} />
+                <ItemDetail item={selectedItem} navigate={desktopNavigate} backTarget={desktopDetailReturnTab === "value" ? "list" : "list"} />
               ) : desktopItemFormOpen ? (
                 <AddItem navigate={desktopNavigate} editItem={editItem} />
               ) : (
@@ -383,9 +750,6 @@ function AppContent() {
                                 </button>
                                 <button className="desktop-action-btn" onClick={() => desktopNavigate("edit", item)}>
                                   编辑
-                                </button>
-                                <button className="desktop-action-btn" onClick={() => handleDesktopToggleStatus(item)}>
-                                  {item.status === "active" ? "停用" : "恢复"}
                                 </button>
                                 <button className="desktop-action-btn danger" onClick={() => handleDesktopDeleteItem(item)}>
                                   删除
@@ -497,6 +861,11 @@ function AppContent() {
     <div className="app-shell">
       <div className="mode-toolbar">
         <span className="mode-toolbar-label">当前：APP 卡片页</span>
+        <button className="theme-toggle mode-theme-toggle" onClick={toggleTheme}>
+          <span title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}>
+            {theme === "light" ? "🌙" : "☀️"}
+          </span>
+        </button>
         <button className="mode-toolbar-btn" onClick={() => setMode("chooser")}>
           返回入口页
         </button>

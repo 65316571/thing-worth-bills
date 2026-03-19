@@ -1,9 +1,14 @@
 async function request(url, options = {}) {
+  const isFormData = options.body instanceof FormData;
   const response = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
+    headers: isFormData
+      ? {
+          ...(options.headers || {}),
+        }
+      : {
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+        },
     ...options,
   });
 
@@ -14,6 +19,27 @@ async function request(url, options = {}) {
   }
 
   return data;
+}
+
+async function uploadFileToOss(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = "";
+
+  for (let index = 0; index < bytes.length; index += 1) {
+    binary += String.fromCharCode(bytes[index]);
+  }
+
+  const response = await request("/api/uploads/file", {
+    method: "POST",
+    body: JSON.stringify({
+      fileName: file.name,
+      mimeType: file.type,
+      contentBase64: btoa(binary),
+    }),
+  });
+
+  return response.upload.url;
 }
 
 export const api = {
@@ -43,6 +69,18 @@ export const api = {
       method: "DELETE",
     });
   },
+  createItemAsset(id, payload) {
+    return request(`/api/items/${id}/assets`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  deleteItemAsset(id, assetId) {
+    return request(`/api/items/${id}/assets/${assetId}`, {
+      method: "DELETE",
+    });
+  },
+  uploadFileToOss,
   getWishes() {
     return request("/api/wishes");
   },

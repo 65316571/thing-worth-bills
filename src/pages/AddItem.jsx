@@ -1,18 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useItems } from "../context/ItemContext";
+import { api } from "../utils/api";
 import { calcDays, calcDailyCost, CATEGORIES } from "../utils/calc";
 
 export default function AddItem({ navigate, editItem }) {
-  const { addItem, updateItem } = useItems();
+  const { addItem, updateItem, deactivateItem, reactivateItem, addItemAsset, deleteItemAsset } = useItems();
   const isEdit = !!editItem;
+  const [uploading, setUploading] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
     price: "",
     buyDate: new Date().toISOString().split("T")[0],
     category: "",
+    purchaseChannel: "",
+    bundleName: "",
     note: "",
   });
+
+  const currentAssets = useMemo(() => editItem?.assets || [], [editItem]);
+  const imageAssets = currentAssets.filter((asset) => asset.type === "image");
 
   useEffect(() => {
     if (editItem) {
@@ -21,6 +28,8 @@ export default function AddItem({ navigate, editItem }) {
         price: editItem.price || "",
         buyDate: editItem.buyDate || new Date().toISOString().split("T")[0],
         category: editItem.category || "",
+        purchaseChannel: editItem.purchaseChannel || "",
+        bundleName: editItem.bundleName || "",
         note: editItem.note || "",
       });
     }
@@ -53,6 +62,72 @@ export default function AddItem({ navigate, editItem }) {
       navigate("list");
     } catch (error) {
       alert(error.message || "保存物品失败");
+    }
+  };
+
+  const handleStatusToggle = async () => {
+    if (!editItem) {
+      return;
+    }
+
+    try {
+      if (editItem.status === "active") {
+        if (!window.confirm(`标记「${editItem.name}」为已停用？`)) {
+          return;
+        }
+        await deactivateItem(editItem.id);
+      } else {
+        await reactivateItem(editItem.id);
+      }
+      navigate("list");
+    } catch (error) {
+      alert(error.message || "更新物品状态失败");
+    }
+  };
+
+  const handleUploadImage = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file || !editItem) {
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const url = await api.uploadFileToOss(file);
+      const asset = await addItemAsset(editItem.id, {
+        type: "image",
+        title: file.name,
+        url,
+      });
+      navigate("edit", {
+        ...editItem,
+        assets: [
+          asset,
+          ...currentAssets,
+        ],
+      });
+    } catch (error) {
+      alert(error.message || "上传图片失败");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteImage = async (assetId) => {
+    if (!editItem) {
+      return;
+    }
+
+    try {
+      await deleteItemAsset(editItem.id, assetId);
+      navigate("edit", {
+        ...editItem,
+        assets: currentAssets.filter((asset) => asset.id !== assetId),
+      });
+    } catch (error) {
+      alert(error.message || "删除图片失败");
     }
   };
 
@@ -123,15 +198,77 @@ export default function AddItem({ navigate, editItem }) {
           </select>
         </div>
 
+        <div className="form-row">
+          <div className="form-section">
+            <div className="form-label">购买渠道</div>
+            <input
+              className="form-input"
+              placeholder="例如：京东、淘宝、线下门店"
+              value={form.purchaseChannel}
+              onChange={(e) => set("purchaseChannel", e.target.value)}
+            />
+          </div>
+          <div className="form-section">
+            <div className="form-label">整体名称</div>
+            <input
+              className="form-input"
+              placeholder="例如：Switch 游戏套装"
+              value={form.bundleName}
+              onChange={(e) => set("bundleName", e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="form-hint">
+          如果多个物品属于同一个整体，请给它们填写相同的“整体名称”，例如游戏机和配套手柄。
+        </div>
+
         <div className="form-section">
           <div className="form-label">备注</div>
           <textarea
             className="form-textarea"
-            placeholder="使用感受、购买渠道等（可选）"
+            placeholder="使用感受、保修情况等（可选）"
             value={form.note}
             onChange={(e) => set("note", e.target.value)}
           />
         </div>
+
+        {isEdit && (
+          <div className="detail-section desktop-edit-section">
+            <div className="detail-section-title">订单截图</div>
+            <div className="detail-assets-card">
+              <div className="detail-assets-actions">
+                <label className={`action-btn success detail-inline-btn ${uploading ? "disabled" : ""}`}>
+                  {uploading ? "上传中..." : "上传图片"}
+                  <input type="file" accept="image/*" hidden onChange={handleUploadImage} disabled={uploading} />
+                </label>
+              </div>
+
+              {imageAssets.length === 0 ? (
+                <div className="desktop-empty-inline">暂无订单截图，可直接上传图片。</div>
+              ) : (
+                <div className="detail-assets-list">
+                  {imageAssets.map((asset) => (
+                    <div className="detail-asset-item" key={asset.id}>
+                      <div className="detail-image-preview-wrap">
+                        <img className="detail-image-preview" src={asset.url} alt={asset.title || "订单截图"} />
+                        <div>
+                          <div className="detail-related-name">{asset.title || "订单截图"}</div>
+                          <a className="detail-asset-link" href={asset.url} target="_blank" rel="noreferrer">
+                            查看原图
+                          </a>
+                        </div>
+                      </div>
+                      <button className="action-btn danger detail-inline-btn" onClick={() => handleDeleteImage(asset.id)}>
+                        删除
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {daily && (
           <div className="auto-calc-card">
@@ -151,6 +288,14 @@ export default function AddItem({ navigate, editItem }) {
               </div>
               <div className="auto-calc-label">总价格</div>
             </div>
+          </div>
+        )}
+
+        {isEdit && (
+          <div className="desktop-edit-actions">
+            <button className={`action-btn ${editItem.status === "active" ? "warning" : "success"}`} onClick={handleStatusToggle}>
+              {editItem.status === "active" ? "📦 标记为已停用" : "♻️ 标记为使用中"}
+            </button>
           </div>
         )}
 
