@@ -33,17 +33,17 @@ export default function WishList({ navigate }) {
             <div className="page-subtitle">记录想要的物品，等待好价</div>
           </div>
           <button
+            className="action-btn"
             style={{
-              fontSize: 13,
-              color: "white",
-              fontWeight: 500,
-              padding: "8px 14px",
-              borderRadius: 10,
               background: "var(--accent)",
+              color: "white",
+              padding: "8px 16px",
+              minHeight: "38px",
+              fontSize: "13px",
             }}
             onClick={() => setShowForm((v) => !v)}
           >
-            {showForm ? "收起" : "+ 添加"}
+            {showForm ? "收起表单" : "+ 添加心愿"}
           </button>
         </div>
       </div>

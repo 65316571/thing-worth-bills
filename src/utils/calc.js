@@ -5,6 +5,52 @@ export function calcDays(buyDate, stopDate = null) {
   return Math.max(1, diff);
 }
 
+export function formatUsageDuration(buyDate, stopDate = null) {
+  const start = new Date(buyDate);
+  const rawEnd = stopDate ? new Date(stopDate) : new Date();
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(rawEnd.getTime())) {
+    return "1天";
+  }
+
+  const end = new Date(rawEnd);
+
+  if (end < start) {
+    return "1天";
+  }
+
+  let years = end.getFullYear() - start.getFullYear();
+  let months = end.getMonth() - start.getMonth();
+  let days = end.getDate() - start.getDate();
+
+  if (days < 0) {
+    months -= 1;
+    const previousMonthLastDay = new Date(end.getFullYear(), end.getMonth(), 0).getDate();
+    days += previousMonthLastDay;
+  }
+
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+
+  const parts = [];
+
+  if (years > 0) {
+    parts.push(`${years}年`);
+  }
+
+  if (months > 0) {
+    parts.push(`${months}月`);
+  }
+
+  if (days > 0 || parts.length === 0) {
+    parts.push(`${Math.max(1, days)}天`);
+  }
+
+  return parts.join("");
+}
+
 export function calcDailyCost(price, days) {
   return (price / days).toFixed(2);
 }

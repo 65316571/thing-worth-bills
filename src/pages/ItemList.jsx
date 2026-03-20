@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useItems } from "../context/ItemContext";
-import { calcDays, calcDailyCost, CATEGORY_ICONS, SORT_OPTIONS } from "../utils/calc";
+import { calcDays, calcDailyCost, formatPrice, CATEGORIES, CATEGORY_ICONS, SORT_OPTIONS } from "../utils/calc";
 
 const ALL_CATS = ["全部", "电子产品", "游戏设备", "耳机", "存储设备", "手机", "其他"];
 
@@ -100,42 +100,69 @@ export default function ItemList({ navigate }) {
   const [sort, setSort] = useState("days_desc");
   const [catFilter, setCatFilter] = useState("全部");
   const [showInactive, setShowInactive] = useState(true);
+  const [search, setSearch] = useState("");
 
-  const filtered = items
-    .filter((it) => catFilter === "全部" || it.category === catFilter)
-    .filter((it) => showInactive || it.status === "active");
+  const filtered = useMemo(
+    () => items
+      .filter((it) => catFilter === "全部" || it.category === catFilter)
+      .filter((it) => showInactive || it.status === "active"),
+    [items, catFilter, showInactive],
+  );
 
-  const sorted = sortEntries(buildDisplayEntries(filtered), sort);
+  const sorted = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    const displayEntries = sortEntries(buildDisplayEntries(filtered), sort);
+
+    if (!keyword) {
+      return displayEntries;
+    }
+
+    return displayEntries.filter((item) => {
+      const searchFields = [
+        item.name,
+        item.category,
+        item.purchaseChannel,
+        item.note,
+        item.bundleName,
+        ...(item.items || []).map((member) => member.name),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchFields.includes(keyword);
+    });
+  }, [filtered, sort, search]);
+
   const activeCount = items.filter((i) => i.status === "active").length;
   const totalSpend = items.reduce((s, i) => s + i.price, 0);
 
   return (
     <div className="app">
       <div className="page-header">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+        <div className="list-header-top">
           <div>
             <div className="page-title">物值账</div>
             <div className="page-subtitle">
               {activeCount} 件在用 · 累计 ¥{totalSpend.toLocaleString("zh-CN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </div>
           </div>
-          <button
-            style={{
-              fontSize: 11,
-              color: showInactive ? "var(--ink-3)" : "var(--accent)",
-              fontWeight: 500,
-              padding: "6px 12px",
-              borderRadius: 8,
-              border: "1.5px solid var(--border)",
-              background: "var(--surface)",
-            }}
-            onClick={() => setShowInactive((v) => !v)}
-          >
-            {showInactive ? "隐藏停用" : "显示停用"}
-          </button>
+          <div className="list-header-controls">
+            <div className="list-search-wrap">
+              <input
+                className="form-input list-search-input"
+                placeholder="搜索名称、分类、渠道、备注"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <button className={`list-toggle-btn ${showInactive ? "" : "active"}`} onClick={() => setShowInactive((v) => !v)}>
+              {showInactive ? "隐藏停用" : "显示停用"}
+            </button>
+          </div>
         </div>
 
-        <div style={{ marginTop: 14 }}>
+        <div className="list-toolbar-section">
           <div className="sort-bar">
             {SORT_OPTIONS.map((opt) => (
               <button
@@ -169,8 +196,8 @@ export default function ItemList({ navigate }) {
         {sorted.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">📦</div>
-            <div className="empty-title">还没有物品记录</div>
-            <div className="empty-desc">点击下方 + 按钮，<br />开始记录你的第一件物品</div>
+            <div className="empty-title">{search.trim() ? "没有匹配的物品" : "还没有物品记录"}</div>
+            <div className="empty-desc">{search.trim() ? "试试搜索名称、分类、渠道或备注关键词" : <><span>点击下方 + 按钮，</span><br /><span>开始记录你的第一件物品</span></>}</div>
           </div>
         ) : (
           sorted.map((item) => <ItemCard key={item.id} item={item} onClick={() => navigate("detail", item)} />)

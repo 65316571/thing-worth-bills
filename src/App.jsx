@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ItemList from "./pages/ItemList";
 import AddItem from "./pages/AddItem";
 import ItemDetail from "./pages/ItemDetail";
@@ -6,7 +6,7 @@ import Stats from "./pages/Stats";
 import WishList from "./pages/WishList";
 import { ItemProvider } from "./context/ItemContext";
 import { useItems } from "./context/ItemContext";
-import { CATEGORIES, SORT_OPTIONS, calcDays, calcDailyCost } from "./utils/calc";
+import { CATEGORIES, SORT_OPTIONS, calcDays, calcDailyCost, formatUsageDuration } from "./utils/calc";
 import { api } from "./utils/api";
 import "./App.css";
 
@@ -30,6 +30,7 @@ function AppContent() {
     return window.localStorage.getItem("thing-worth-theme") || "light";
   });
   const [page, setPage] = useState("list");
+  const [toolbarExpanded, setToolbarExpanded] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [desktopDetailReturnTab, setDesktopDetailReturnTab] = useState("items");
@@ -38,6 +39,7 @@ function AppContent() {
   const [desktopOverviewSort, setDesktopOverviewSort] = useState("date_desc");
   const [desktopOverviewStatus, setDesktopOverviewStatus] = useState("all");
   const [desktopItemFormOpen, setDesktopItemFormOpen] = useState(false);
+  const [desktopItemsSearch, setDesktopItemsSearch] = useState("");
   const [desktopWishFormOpen, setDesktopWishFormOpen] = useState(false);
   const [desktopValueImageIndex, setDesktopValueImageIndex] = useState({});
   const [desktopValueUploading, setDesktopValueUploading] = useState({});
@@ -55,6 +57,8 @@ function AppContent() {
     addWish,
     deleteWish,
     deleteItem,
+    deactivateItem,
+    reactivateItem,
     addItemAsset,
   } = useItems();
 
@@ -124,6 +128,57 @@ function AppContent() {
     })[0];
   const desktopOverviewLongestOwned = [...desktopOverviewItems]
     .sort((a, b) => calcDays(b.buyDate, b.stopDate) - calcDays(a.buyDate, a.stopDate))[0];
+  const desktopOverviewListItems = desktopOverviewItems.slice(0, 6);
+  const desktopOverviewListConfig = {
+    days_desc: {
+      title: "使用最久",
+      meta: (item) => `${item.category || "未分类"} · 已使用 ${calcDays(item.buyDate, item.stopDate)} 天`,
+    },
+    cost_asc: {
+      title: "每日最省",
+      meta: (item) => `${item.category || "未分类"} · 日均 ¥${calcDailyCost(Number(item.price || 0), calcDays(item.buyDate, item.stopDate))}`,
+    },
+    cost_desc: {
+      title: "每日最贵",
+      meta: (item) => `${item.category || "未分类"} · 日均 ¥${calcDailyCost(Number(item.price || 0), calcDays(item.buyDate, item.stopDate))}`,
+    },
+    price_desc: {
+      title: "价格最高",
+      meta: (item) => `${item.category || "未分类"} · 总价最高档位`,
+    },
+    price_asc: {
+      title: "价格最低",
+      meta: (item) => `${item.category || "未分类"} · 当前最低价位`,
+    },
+    date_desc: {
+      title: "最近变更",
+      meta: (item) => `${item.category || "未分类"} · 购入于 ${String(item.buyDate).slice(0, 10)}`,
+    },
+  }[desktopOverviewSort] || {
+    title: "最近变更",
+    meta: (item) => `${item.category || "未分类"} · 购入于 ${String(item.buyDate).slice(0, 10)}`,
+  };
+
+  const desktopItemsFiltered = useMemo(() => {
+    const keyword = desktopItemsSearch.trim().toLowerCase();
+
+    if (!keyword) {
+      return items;
+    }
+
+    return items.filter((item) => [
+      item.name,
+      item.category,
+      item.purchaseChannel,
+      item.note,
+      item.buyDate,
+      item.status === "active" ? "使用中" : "已停用",
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(keyword));
+  }, [items, desktopItemsSearch]);
 
   const resetDesktopItemView = () => {
     setSelectedItem(null);
@@ -197,7 +252,16 @@ function AppContent() {
     setDesktopWishForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const getDesktopValueImages = (item) => (item.assets || []).filter((asset) => asset.type === "image" && asset.url);
+  const getDesktopValueImages = (item) => {
+    const assets = (item.assets || []).filter((asset) => asset.url);
+    const productImages = assets.filter((asset) => asset.type === "product_image");
+
+    if (productImages.length > 0) {
+      return productImages;
+    }
+
+    return assets.filter((asset) => asset.type === "image");
+  };
 
   const getDesktopValueImageIndex = (itemId, imageCount) => {
     if (!imageCount) {
@@ -243,7 +307,7 @@ function AppContent() {
     try {
       const url = await api.uploadFileToOss(file);
       await addItemAsset(item.id, {
-        type: "image",
+        type: "product_image",
         title: file.name,
         url,
       });
@@ -292,6 +356,26 @@ function AppContent() {
     }
   };
 
+  const handleDesktopToggleItemStatus = async (item) => {
+    const nextAction = item.status === "active" ? "禁用" : "启用";
+
+    if (!window.confirm(`确定${nextAction}「${item.name}」吗？`)) {
+      return;
+    }
+
+    try {
+      if (item.status === "active") {
+        await deactivateItem(item.id);
+      } else {
+        await reactivateItem(item.id);
+      }
+
+      resetDesktopItemView();
+    } catch (requestError) {
+      alert(requestError.message || `${nextAction}物品失败`);
+    }
+  };
+
   const chooseMode = (nextMode) => {
     setMode(nextMode);
     if (nextMode === "desktop") {
@@ -311,12 +395,12 @@ function AppContent() {
           <div className="entry-badge">物值账</div>
           <h1 className="entry-title">选择进入方式</h1>
           <p className="entry-desc">
-            首次进入时可选择更适合你的浏览方式，手机推荐卡片式 APP 页面，电脑推荐常规网站页面。
+            首次进入时可选择更适合你的浏览方式，手机推荐卡片式 移动端 页面，电脑推荐常规网站页面。
           </p>
 
           <div className="entry-recommend">
             当前设备推荐：
-            <strong>{recommendedMode === "mobile" ? " APP 卡片页" : " 电脑网站页"}</strong>
+            <strong>{recommendedMode === "mobile" ? " 移动端卡片页" : " 电脑网站页"}</strong>
           </div>
 
           <button className="theme-toggle entry-theme-toggle" onClick={toggleTheme}>
@@ -390,7 +474,7 @@ function AppContent() {
           </button>
         </aside>
 
-        <main className="desktop-main">
+        <main className={`desktop-main ${desktopTab === "value" ? "desktop-main-scroll" : ""}`}>
           <header className="desktop-header">
             <div>
               <h2 className="desktop-title">
@@ -413,7 +497,7 @@ function AppContent() {
                 </span>
               </button>
               <button className="desktop-header-btn" onClick={() => chooseMode("mobile")}>
-                切换到 APP 卡片页
+                切换到 移动端卡片页
               </button>
             </div>
           </header>
@@ -657,26 +741,7 @@ function AppContent() {
               </section>
 
               <section className="desktop-content-grid">
-                <article className="desktop-panel">
-                  <div className="desktop-panel-title">最近变更</div>
-                  <div className="desktop-list">
-                    {recentChangedItems.map((item) => (
-                      <div className="desktop-list-row" key={item.id}>
-                        <div>
-                          <div className="desktop-list-name">{item.name}</div>
-                          <div className="desktop-list-meta">
-                            {(item.category || "未分类")} · {item.status === "active" ? "活跃中" : "已停用"} · 最近更新 {String(item.updatedAt || item.createdAt || item.buyDate).slice(0, 10)}
-                          </div>
-                        </div>
-                        <div className="desktop-list-price">¥{Number(item.price || 0).toFixed(2)}</div>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-              </section>
-
-              <section className="desktop-content-grid desktop-overview-summary-grid">
-                <article className="desktop-panel">
+                <article className="desktop-panel desktop-overview-panel-compact">
                   <div className="desktop-panel-title">分类分布</div>
                   <div className="desktop-category-list">
                     {(desktopOverviewItems.length ? Object.entries(desktopOverviewItems.reduce((acc, item) => {
@@ -702,6 +767,21 @@ function AppContent() {
                     ))}
                   </div>
                 </article>
+
+                <article className="desktop-panel desktop-overview-panel-compact">
+                  <div className="desktop-panel-title">{desktopOverviewListConfig.title}</div>
+                  <div className="desktop-list">
+                    {desktopOverviewListItems.map((item) => (
+                      <div className="desktop-list-row" key={item.id}>
+                        <div>
+                          <div className="desktop-list-name">{item.name}</div>
+                          <div className="desktop-list-meta">{desktopOverviewListConfig.meta(item)}</div>
+                        </div>
+                        <div className="desktop-list-price">¥{Number(item.price || 0).toFixed(2)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </article>
               </section>
             </>
           )}
@@ -714,33 +794,52 @@ function AppContent() {
                 <AddItem navigate={desktopNavigate} editItem={editItem} />
               ) : (
                 <section className="desktop-panel">
-                  <div className="desktop-panel-head">
+                  <div className="desktop-panel-head desktop-items-panel-head">
                     <div>
                       <div className="desktop-panel-title">全部物品</div>
-                      <div className="desktop-panel-subtitle">电脑端已与 APP 端同步，可直接管理物品。</div>
+                      <div className="desktop-panel-subtitle">电脑端已与 移动端同步，可直接管理物品。</div>
                     </div>
-                    <button className="desktop-primary-btn" onClick={() => desktopNavigate("add")}>
-                      + 新增物品
-                    </button>
+                    <div className="desktop-items-panel-actions">
+                      <input
+                        className="form-input desktop-items-search-input"
+                        placeholder="搜索名称、分类、渠道、备注"
+                        value={desktopItemsSearch}
+                        onChange={(e) => setDesktopItemsSearch(e.target.value)}
+                      />
+                      <button className="desktop-primary-btn" onClick={() => desktopNavigate("add")}>
+                        + 新增物品
+                      </button>
+                    </div>
                   </div>
                   <div className="desktop-table-wrap">
                     <table className="desktop-table">
+                      <colgroup>
+                        <col className="desktop-col-name" />
+                        <col className="desktop-col-category" />
+                        <col className="desktop-col-date" />
+                        <col className="desktop-col-days" />
+                        <col className="desktop-col-status" />
+                        <col className="desktop-col-price" />
+                        <col className="desktop-col-actions" />
+                      </colgroup>
                       <thead>
                         <tr>
                           <th>名称</th>
                           <th>分类</th>
                           <th>购买日期</th>
+                          <th>使用天数</th>
                           <th>状态</th>
                           <th>价格</th>
                           <th>操作</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {items.map((item) => (
+                        {desktopItemsFiltered.map((item) => (
                           <tr key={item.id}>
                             <td>{item.name}</td>
                             <td>{item.category}</td>
                             <td>{item.buyDate}</td>
+                            <td>{formatUsageDuration(item.buyDate, item.stopDate)}</td>
                             <td>{item.status === "active" ? "使用中" : "已停用"}</td>
                             <td>¥{Number(item.price || 0).toFixed(2)}</td>
                             <td>
@@ -750,6 +849,9 @@ function AppContent() {
                                 </button>
                                 <button className="desktop-action-btn" onClick={() => desktopNavigate("edit", item)}>
                                   编辑
+                                </button>
+                                <button className="desktop-action-btn warning" onClick={() => handleDesktopToggleItemStatus(item)}>
+                                  {item.status === "active" ? "禁用" : "启用"}
                                 </button>
                                 <button className="desktop-action-btn danger" onClick={() => handleDesktopDeleteItem(item)}>
                                   删除
@@ -761,6 +863,9 @@ function AppContent() {
                       </tbody>
                     </table>
                   </div>
+                  {desktopItemsFiltered.length === 0 && (
+                    <div className="desktop-empty-inline desktop-items-empty">没有匹配的物品</div>
+                  )}
                 </section>
               )}
             </>
@@ -771,7 +876,7 @@ function AppContent() {
               <div className="desktop-panel-head">
                 <div>
                   <div className="desktop-panel-title">心愿单</div>
-                  <div className="desktop-panel-subtitle">与 APP 端共用同一套新增与删除接口。</div>
+                  <div className="desktop-panel-subtitle">与 移动端共用同一套新增与删除接口。</div>
                 </div>
                 <button className="desktop-primary-btn" onClick={() => setDesktopWishFormOpen((value) => !value)}>
                   {desktopWishFormOpen ? "收起表单" : "+ 添加心愿"}
@@ -859,19 +964,30 @@ function AppContent() {
 
   return (
     <div className="app-shell">
-      <div className="mode-toolbar">
-        <span className="mode-toolbar-label">当前：APP 卡片页</span>
-        <button className="theme-toggle mode-theme-toggle" onClick={toggleTheme}>
-          <span title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}>
-            {theme === "light" ? "🌙" : "☀️"}
-          </span>
-        </button>
-        <button className="mode-toolbar-btn" onClick={() => setMode("chooser")}>
-          返回入口页
-        </button>
-        <button className="mode-toolbar-btn" onClick={() => chooseMode("desktop")}>
-          电脑端页面
-        </button>
+      <div className={`mode-toolbar ${toolbarExpanded ? "expanded" : "collapsed"}`} onClick={() => !toolbarExpanded && setToolbarExpanded(true)}>
+        {!toolbarExpanded ? (
+          <div className="mode-toolbar-toggle-btn">
+            <span>⚙️ 模式设置</span>
+          </div>
+        ) : (
+          <>
+            <span className="mode-toolbar-label">当前：移动端 卡片页</span>
+            <button className="theme-toggle mode-theme-toggle" onClick={(e) => { e.stopPropagation(); toggleTheme(); }}>
+              <span title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}>
+                {theme === "light" ? "🌙" : "☀️"}
+              </span>
+            </button>
+            <button className="mode-toolbar-btn" onClick={(e) => { e.stopPropagation(); setMode("chooser"); }}>
+              返回入口页
+            </button>
+            <button className="mode-toolbar-btn" onClick={(e) => { e.stopPropagation(); chooseMode("desktop"); }}>
+              电脑端页面
+            </button>
+            <button className="mode-toolbar-close" onClick={(e) => { e.stopPropagation(); setToolbarExpanded(false); }}>
+              收起
+            </button>
+          </>
+        )}
       </div>
 
       <div className="app">

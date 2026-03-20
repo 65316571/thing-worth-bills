@@ -32,6 +32,15 @@ function formatDateOnly(value) {
   return `${year}-${month}-${day}`;
 }
 
+function normalizeOptionalText(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
 function mapItemRow(row) {
   return {
     id: Number(row.id),
@@ -145,10 +154,10 @@ router.post("/items", async (req, res) => {
         Number(price),
         buyDate,
         category || "未分类",
-        purchaseChannel?.trim() || null,
-        bundleName?.trim() || null,
-        note || null,
-        icon || null,
+        normalizeOptionalText(purchaseChannel),
+        normalizeOptionalText(bundleName),
+        normalizeOptionalText(note),
+        normalizeOptionalText(icon),
       ],
     );
 
@@ -201,10 +210,10 @@ router.put("/items/:id", async (req, res) => {
         buyDate,
         stopDate || null,
         category || "未分类",
-        purchaseChannel?.trim() || null,
-        bundleName?.trim() || null,
-        note || null,
-        icon || null,
+        normalizeOptionalText(purchaseChannel),
+        normalizeOptionalText(bundleName),
+        normalizeOptionalText(note),
+        normalizeOptionalText(icon),
         status || "active",
         id,
       ],
@@ -283,10 +292,10 @@ router.post("/items/:id/assets", async (req, res) => {
   const { id } = req.params;
   const { type, title, url } = req.body;
 
-  if (!["image", "tutorial", "link"].includes(type)) {
+  if (!["image", "product_image", "order_image", "tutorial_image", "tutorial", "link"].includes(type)) {
     return res.status(400).json({
       success: false,
-      message: "asset type must be image, tutorial or link",
+      message: "asset type must be image, product_image, order_image, tutorial_image, tutorial or link",
     });
   }
 

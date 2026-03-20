@@ -70,37 +70,32 @@ export default function Stats({ navigate }) {
           </div>
         </div>
 
-        {/* Category Breakdown */}
-        {cats.length > 0 && (
-          <>
-            <div className="section-divider" style={{ padding: "0 0 10px" }}>分类消费</div>
-            <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "16px", marginBottom: 16 }}>
-              {cats.map(([cat, amount]) => (
-                <div className="category-bar-item" key={cat}>
-                  <div className="cat-bar-header">
-                    <span className="cat-bar-name">{CATEGORY_ICONS[cat] || "📦"} {cat}</span>
-                    <span className="cat-bar-amount">¥{amount.toFixed(0)}</span>
-                  </div>
-                  <div className="cat-bar-track">
-                    <div
-                      className="cat-bar-fill"
-                      style={{ width: `${(amount / maxCat) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+        <div className="section-divider">分类消费</div>
+        <div className="stats-panel-card">
+          {cats.map(([cat, amount]) => (
+            <div className="category-bar-item" key={cat}>
+              <div className="cat-bar-header">
+                <span className="cat-bar-name">{CATEGORY_ICONS[cat] || "📦"} {cat}</span>
+                <span className="cat-bar-amount">¥{amount.toFixed(0)}</span>
+              </div>
+              <div className="cat-bar-track">
+                <div
+                  className="cat-bar-fill"
+                  style={{ width: `${(amount / maxCat) * 100}%` }}
+                />
+              </div>
             </div>
-          </>
-        )}
+          ))}
+        </div>
 
         {/* Highlights */}
-        <div className="section-divider" style={{ padding: "0 0 10px" }}>精华榜单</div>
+        <div className="section-divider">精华榜单</div>
 
         {mostExpensive && (
           <div className="highlight-card">
             <div className="highlight-icon">🏆</div>
-            <div>
-              <div style={{ fontSize: 11, color: "var(--ink-4)", marginBottom: 4, fontWeight: 300 }}>最贵物品</div>
+            <div className="highlight-content">
+              <div className="highlight-label">最贵物品</div>
               <div className="highlight-name">{mostExpensive.name}</div>
               <div className="highlight-meta">¥{mostExpensive.price}</div>
             </div>
@@ -110,8 +105,8 @@ export default function Stats({ navigate }) {
         {longestUsed && (
           <div className="highlight-card">
             <div className="highlight-icon">⏳</div>
-            <div>
-              <div style={{ fontSize: 11, color: "var(--ink-4)", marginBottom: 4, fontWeight: 300 }}>使用最久</div>
+            <div className="highlight-content">
+              <div className="highlight-label">使用最久</div>
               <div className="highlight-name">{longestUsed.name}</div>
               <div className="highlight-meta">{calcDays(longestUsed.buyDate, longestUsed.stopDate)} 天</div>
             </div>
@@ -121,8 +116,8 @@ export default function Stats({ navigate }) {
         {bestValue && (
           <div className="highlight-card">
             <div className="highlight-icon">💚</div>
-            <div>
-              <div style={{ fontSize: 11, color: "var(--ink-4)", marginBottom: 4, fontWeight: 300 }}>最超值（日均最低）</div>
+            <div className="highlight-content">
+              <div className="highlight-label">最超值（日均最低）</div>
               <div className="highlight-name">{bestValue.name}</div>
               <div className="highlight-meta">
                 ¥{calcDailyCost(bestValue.price, calcDays(bestValue.buyDate))}/天
