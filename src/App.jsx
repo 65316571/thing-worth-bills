@@ -43,6 +43,7 @@ function AppContent() {
   const [desktopItemFormOpen, setDesktopItemFormOpen] = useState(false);
   const [desktopSidebarExpanded, setDesktopSidebarExpanded] = useState(true);
   const [desktopItemsSearch, setDesktopItemsSearch] = useState("");
+  const [desktopItemsSort, setDesktopItemsSort] = useState({ field: null, direction: 'asc' });
   const [desktopWishFormOpen, setDesktopWishFormOpen] = useState(false);
   const [desktopValueImageIndex, setDesktopValueImageIndex] = useState({});
   const [desktopValueUploading, setDesktopValueUploading] = useState({});
@@ -165,24 +166,51 @@ function AppContent() {
 
   const desktopItemsFiltered = useMemo(() => {
     const keyword = desktopItemsSearch.trim().toLowerCase();
+    let result = items;
 
-    if (!keyword) {
-      return items;
+    if (keyword) {
+      result = items.filter((item) => [
+        item.name,
+        item.category,
+        item.purchaseChannel,
+        item.note,
+        item.buyDate,
+        item.status === "active" ? "使用中" : "已停用",
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(keyword));
     }
 
-    return items.filter((item) => [
-      item.name,
-      item.category,
-      item.purchaseChannel,
-      item.note,
-      item.buyDate,
-      item.status === "active" ? "使用中" : "已停用",
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase()
-      .includes(keyword));
-  }, [items, desktopItemsSearch]);
+    if (desktopItemsSort.field) {
+      result = [...result].sort((a, b) => {
+        const { field, direction } = desktopItemsSort;
+        const dir = direction === 'asc' ? 1 : -1;
+
+        switch (field) {
+          case 'name':
+            return dir * String(a.name || '').localeCompare(String(b.name || ''));
+          case 'purchaseChannel':
+            return dir * String(a.purchaseChannel || '').localeCompare(String(b.purchaseChannel || ''));
+          case 'buyDate':
+            return dir * (new Date(a.buyDate || 0) - new Date(b.buyDate || 0));
+          case 'days':
+            return dir * (calcDays(a.buyDate, a.stopDate) - calcDays(b.buyDate, b.stopDate));
+          case 'status':
+            return dir * String(a.status || '').localeCompare(String(b.status || ''));
+          case 'price':
+            return dir * (Number(a.price || 0) - Number(b.price || 0));
+          case 'daily':
+            return dir * (Number(calcDailyCost(Number(a.price || 0), calcDays(a.buyDate, a.stopDate))) - Number(calcDailyCost(Number(b.price || 0), calcDays(b.buyDate, b.stopDate))));
+          default:
+            return 0;
+        }
+      });
+    }
+
+    return result;
+  }, [items, desktopItemsSearch, desktopItemsSort]);
 
   const resetDesktopItemView = () => {
     setSelectedItem(null);
@@ -460,7 +488,7 @@ function AppContent() {
                 onClick={() => setDesktopTab("value")}
                 title="主页"
               >
-                <span className="desktop-menu-icon">⌂</span>
+                <span className="desktop-menu-icon">🏠</span>
                 <span className="desktop-menu-text">主页</span>
               </button>
               <button
@@ -468,7 +496,7 @@ function AppContent() {
                 onClick={() => setDesktopTab("overview")}
                 title="总览"
               >
-                <span className="desktop-menu-icon">◎</span>
+                <span className="desktop-menu-icon">📊</span>
                 <span className="desktop-menu-text">总览</span>
               </button>
               <button
@@ -476,7 +504,7 @@ function AppContent() {
                 onClick={() => setDesktopTab("items")}
                 title="清单"
               >
-                <span className="desktop-menu-icon">◈</span>
+                <span className="desktop-menu-icon">📋</span>
                 <span className="desktop-menu-text">清单</span>
               </button>
               <button
@@ -484,7 +512,7 @@ function AppContent() {
                 onClick={() => setDesktopTab("wishes")}
                 title="心愿墙"
               >
-                <span className="desktop-menu-icon">◇</span>
+                <span className="desktop-menu-icon">⭐</span>
                 <span className="desktop-menu-text">心愿墙</span>
               </button>
               <button
@@ -492,13 +520,13 @@ function AppContent() {
                 onClick={() => setDesktopTab("gallery")}
                 title="图库"
               >
-                <span className="desktop-menu-icon">▥</span>
+                <span className="desktop-menu-icon">🖼️</span>
                 <span className="desktop-menu-text">图库</span>
               </button>
             </div>
 
             <button className="desktop-switch-btn" onClick={() => setMode("chooser")} title="返回入口">
-              <span className="desktop-menu-icon">⎋</span>
+              <span className="desktop-menu-icon">↩️</span>
               <span className="desktop-menu-text">返回入口选择页</span>
             </button>
           </div>
@@ -857,16 +885,53 @@ function AppContent() {
                         <col className="desktop-col-days" />
                         <col className="desktop-col-status" />
                         <col className="desktop-col-price" />
+                        <col className="desktop-col-daily" />
                         <col className="desktop-col-actions" />
                       </colgroup>
                       <thead>
                         <tr>
-                          <th>名称</th>
-                          <th>分类</th>
-                          <th>购买日期</th>
-                          <th>使用天数</th>
-                          <th>状态</th>
-                          <th>价格</th>
+                          <th
+                            className={`desktop-sortable-header ${desktopItemsSort.field === 'name' ? 'sorted' : ''}`}
+                            onClick={() => setDesktopItemsSort(prev => ({ field: 'name', direction: prev.field === 'name' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
+                          >
+                            名称 {desktopItemsSort.field === 'name' && (desktopItemsSort.direction === 'asc' ? '↑' : '↓')}
+                          </th>
+                          <th
+                            className={`desktop-sortable-header ${desktopItemsSort.field === 'purchaseChannel' ? 'sorted' : ''}`}
+                            onClick={() => setDesktopItemsSort(prev => ({ field: 'purchaseChannel', direction: prev.field === 'purchaseChannel' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
+                          >
+                            购买渠道 {desktopItemsSort.field === 'purchaseChannel' && (desktopItemsSort.direction === 'asc' ? '↑' : '↓')}
+                          </th>
+                          <th
+                            className={`desktop-sortable-header ${desktopItemsSort.field === 'buyDate' ? 'sorted' : ''}`}
+                            onClick={() => setDesktopItemsSort(prev => ({ field: 'buyDate', direction: prev.field === 'buyDate' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
+                          >
+                            购买日期 {desktopItemsSort.field === 'buyDate' && (desktopItemsSort.direction === 'asc' ? '↑' : '↓')}
+                          </th>
+                          <th
+                            className={`desktop-sortable-header ${desktopItemsSort.field === 'days' ? 'sorted' : ''}`}
+                            onClick={() => setDesktopItemsSort(prev => ({ field: 'days', direction: prev.field === 'days' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
+                          >
+                            使用天数 {desktopItemsSort.field === 'days' && (desktopItemsSort.direction === 'asc' ? '↑' : '↓')}
+                          </th>
+                          <th
+                            className={`desktop-sortable-header ${desktopItemsSort.field === 'status' ? 'sorted' : ''}`}
+                            onClick={() => setDesktopItemsSort(prev => ({ field: 'status', direction: prev.field === 'status' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
+                          >
+                            状态 {desktopItemsSort.field === 'status' && (desktopItemsSort.direction === 'asc' ? '↑' : '↓')}
+                          </th>
+                          <th
+                            className={`desktop-sortable-header ${desktopItemsSort.field === 'price' ? 'sorted' : ''}`}
+                            onClick={() => setDesktopItemsSort(prev => ({ field: 'price', direction: prev.field === 'price' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
+                          >
+                            价格 {desktopItemsSort.field === 'price' && (desktopItemsSort.direction === 'asc' ? '↑' : '↓')}
+                          </th>
+                          <th
+                            className={`desktop-sortable-header ${desktopItemsSort.field === 'daily' ? 'sorted' : ''}`}
+                            onClick={() => setDesktopItemsSort(prev => ({ field: 'daily', direction: prev.field === 'daily' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
+                          >
+                            天/元 {desktopItemsSort.field === 'daily' && (desktopItemsSort.direction === 'asc' ? '↑' : '↓')}
+                          </th>
                           <th>操作</th>
                         </tr>
                       </thead>
@@ -874,11 +939,12 @@ function AppContent() {
                         {desktopItemsFiltered.map((item) => (
                           <tr key={item.id}>
                             <td>{item.name}</td>
-                            <td>{item.category}</td>
+                            <td>{item.purchaseChannel || "-"}</td>
                             <td>{item.buyDate}</td>
                             <td>{formatUsageDuration(item.buyDate, item.stopDate)}</td>
                             <td>{item.status === "active" ? "使用中" : "已停用"}</td>
                             <td>¥{Number(item.price || 0).toFixed(2)}</td>
+                            <td>¥{calcDailyCost(Number(item.price || 0), calcDays(item.buyDate, item.stopDate))}</td>
                             <td>
                               <div className="desktop-action-group">
                                 <button className="desktop-action-btn" onClick={() => desktopNavigate("detail", item)}>

@@ -666,7 +666,7 @@ input, select, textarea { font-family: inherit; }
 
 .desktop-segmented {
   display: inline-flex;
-  width: 100%;
+  width: 65%;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -811,6 +811,10 @@ input, select, textarea { font-family: inherit; }
   width: 11%;
 }
 
+.desktop-col-daily {
+  width: 10%;
+}
+
 .desktop-col-actions {
   width: 24%;
 }
@@ -829,6 +833,21 @@ input, select, textarea { font-family: inherit; }
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.8px;
+}
+
+.desktop-sortable-header {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.desktop-sortable-header:hover {
+  color: var(--ink-2);
+}
+
+.desktop-sortable-header.sorted {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .desktop-table td {
@@ -1331,11 +1350,33 @@ input, select, textarea { font-family: inherit; }
 }
 
 .desktop-list {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.desktop-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.desktop-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.desktop-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.desktop-list::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
 }
 
 .desktop-list-row {
-  padding: 10px 12px;
+  padding: 16px 12px;
   border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--surface);
@@ -2146,7 +2187,7 @@ input, select, textarea { font-family: inherit; }
 }
 .form-label .required { color: var(--accent); }
 .form-input, .form-select, .form-textarea {
-  width: 100%;
+  width: 90%;
   padding: 11px 13px;
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--border);
@@ -2288,7 +2329,7 @@ input, select, textarea { font-family: inherit; }
 
 .edit-footer-actions {
   width: 100%;
-  margin: 16px 0 0;
+  margin: 20px 0 0;
   display: grid;
   gap: 16px;
   padding: 0 16px 40px;
@@ -2301,13 +2342,13 @@ input, select, textarea { font-family: inherit; }
 
 .edit-footer-btn-wrap {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .footer-secondary-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 
 .footer-secondary-actions .action-btn {
