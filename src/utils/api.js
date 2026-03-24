@@ -58,6 +58,18 @@ export const api = {
       body: JSON.stringify(payload),
     });
   },
+  updateItemAsset(id, assetId, payload) {
+    return request(`/api/items/${id}/assets/${assetId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+  updateAsset(assetId, payload) {
+    return request(`/api/assets/${assetId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
   updateItemStatus(id, status) {
     return request(`/api/items/${id}/status`, {
       method: "PATCH",
@@ -81,6 +93,19 @@ export const api = {
     });
   },
   uploadFileToOss,
+  getAssets(params) {
+    if (!params || typeof params === "string") {
+      const query = params ? `?type=${encodeURIComponent(params)}` : "";
+      return request(`/api/assets${query}`);
+    }
+
+    const query = new URLSearchParams();
+    if (params.type) query.set("type", params.type);
+    if (params.itemKeyword) query.set("itemKeyword", params.itemKeyword);
+    if (params.titleKeyword) query.set("titleKeyword", params.titleKeyword);
+    const qs = query.toString();
+    return request(`/api/assets${qs ? `?${qs}` : ""}`);
+  },
   getWishes() {
     return request("/api/wishes");
   },

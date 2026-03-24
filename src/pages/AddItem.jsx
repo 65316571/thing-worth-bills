@@ -3,17 +3,20 @@ import { useItems } from "../context/ItemContext";
 import { api } from "../utils/api";
 import { calcDays, calcDailyCost, CATEGORIES } from "../utils/calc";
 
-const EDIT_IMAGE_GROUPS = [
-  { type: "product_image", label: "商品图片", empty: "暂无商品图片" },
-  { type: "order_image", label: "订单信息", empty: "暂无订单信息" },
-  { type: "tutorial_image", label: "教程资料", empty: "暂无教程资料" },
-];
+const TYPE_LABELS = {
+  product_image: "商品图片",
+  order_image: "订单信息",
+  tutorial_image: "教程资料",
+  image: "其他图片",
+};
 
 export default function AddItem({ navigate, editItem }) {
   const { addItem, updateItem, deleteItem, deactivateItem, reactivateItem, addItemAsset, deleteItemAsset } = useItems();
   const isEdit = !!editItem;
   const [uploading, setUploading] = useState(false);
   const [previewAsset, setPreviewAsset] = useState(null);
+  const [imageIndexes, setImageIndexes] = useState({});
+  const [viewerTip, setViewerTip] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -25,13 +28,18 @@ export default function AddItem({ navigate, editItem }) {
   });
 
   const currentAssets = useMemo(() => editItem?.assets || [], [editItem]);
-  const imageAssetGroups = useMemo(
-    () => EDIT_IMAGE_GROUPS.map((group) => ({
-      ...group,
-      assets: currentAssets.filter((asset) => asset.type === group.type || (group.type === "product_image" && asset.type === "image")),
-    })),
+  const allImageAssets = useMemo(
+    () =>
+      (currentAssets || []).filter(
+        (asset) =>
+          asset.url &&
+          ["product_image", "order_image", "tutorial_image", "image"].includes(asset.type),
+      ),
     [currentAssets],
   );
+  const viewerCount = allImageAssets.length;
+  const viewerIndex = getGroupIndex("all", viewerCount);
+  const viewerCurrent = viewerCount > 0 ? allImageAssets[viewerIndex] : null;
 
   useEffect(() => {
     if (editItem) {
@@ -159,6 +167,21 @@ export default function AddItem({ navigate, editItem }) {
     }
   };
 
+  function getGroupIndex(groupType, count) {
+    const idx = imageIndexes[groupType] || 0;
+    if (!count) return 0;
+    return ((idx % count) + count) % count;
+  }
+
+  function changeGroupIndex(groupType, count, direction) {
+    if (!count) return;
+    setImageIndexes((prev) => {
+      const current = prev[groupType] || 0;
+      const next = (current + direction + count) % count;
+      return { ...prev, [groupType]: next };
+    });
+  }
+
   return (
     <div className="sub-page">
       <div className="sub-header">
@@ -238,7 +261,7 @@ export default function AddItem({ navigate, editItem }) {
             </div>
           </div>
 
-          <div className="form-section form-card-section">
+          <div className="form-section form-card-section note-stretch">
             <div className="form-label">备注</div>
             <textarea
               className="form-textarea"
@@ -251,52 +274,109 @@ export default function AddItem({ navigate, editItem }) {
 
         <div className="form-side-column">
           {isEdit && (
-            <div className="form-section form-card-section edit-image-panel">
+            <div className="form-section form-card-section edit-image-panel single-viewer">
               <div className="form-label edit-image-panel-title">图片资料</div>
-                <div className="detail-assets-group-list">
-                  {imageAssetGroups.map((group) => (
-                    <div className="detail-asset-group edit-asset-upload-card" key={group.type}>
-                      <div className="detail-asset-group-title edit-asset-upload-title">{group.label}</div>
-                      {group.assets.length === 0 ? (
-                        <label className={`edit-image-upload-slot ${uploading ? "disabled" : ""}`}>
-                          <div className="edit-image-preview-area empty">{group.empty}</div>
-                          <div className="edit-image-upload-action">{uploading ? "上传中..." : "点击上传"}</div>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            hidden
-                            onChange={(event) => handleUploadImage(event, group.type)}
-                            disabled={uploading}
-                          />
-                        </label>
-                      ) : (
-                        <div className="detail-assets-list">
-                          {group.assets.map((asset) => (
-                            <div className="detail-asset-item edit-asset-item" key={asset.id}>
-                              <button className="edit-image-preview-area" type="button" onClick={() => setPreviewAsset(asset)}>
-                                <img className="edit-image-preview-fixed" src={asset.url} alt={asset.title || group.label} />
-                              </button>
-                              <div className="edit-image-side-actions">
-                                <label className={`edit-image-replace-btn ${uploading ? "disabled" : ""}`}>
-                                  {uploading ? "上传中..." : "更换上传"}
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    hidden
-                                    onChange={(event) => handleUploadImage(event, group.type)}
-                                    disabled={uploading}
-                                  />
-                                </label>
-                                <button className="action-btn danger detail-inline-btn" onClick={() => handleDeleteImage(asset.id)}>
-                                  删除
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+              {viewerCurrent && (
+                <div className="viewer-bar">
+                  <div className="viewer-info">
+                    <div className="viewer-name">{viewerCurrent.title || "未命名图片"}</div>
+                    <div className="viewer-sub">
+                      <span className="viewer-badge">{TYPE_LABELS[viewerCurrent.type] || "图片"}</span>
+                      <span className="viewer-badge">{viewerIndex + 1}/{viewerCount}</span>
                     </div>
-                  ))}
+                  </div>
+                  <div className="viewer-actions">
+                    <label
+                      className="viewer-action-btn"
+                      style={{
+                        opacity: uploading ? 0.65 : 1,
+                        pointerEvents: uploading ? "none" : "auto",
+                        cursor: uploading ? "default" : "pointer",
+                      }}
+                    >
+                      {uploading ? "上传中..." : "更换"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(event) => handleUploadImage(event, viewerCurrent.type || "product_image")}
+                        disabled={uploading}
+                      />
+                    </label>
+                    <button className="viewer-action-btn danger" onClick={() => handleDeleteImage(viewerCurrent.id)}>
+                      删除
+                    </button>
+                  </div>
+                </div>
+              )}
+              {viewerTip && (
+                <div className="viewer-tip">{viewerTip}</div>
+              )}
+                <div className="detail-assets-group-list">
+                  <div className="detail-asset-group edit-asset-upload-card">
+                    {allImageAssets.length === 0 ? (
+                      <label className={`edit-image-upload-slot ${uploading ? "disabled" : ""}`}>
+                        <div className="edit-image-preview-area empty">暂无图片，点击上传</div>
+                        <div className="edit-image-upload-action">{uploading ? "上传中..." : "点击上传"}</div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={(event) => handleUploadImage(event, "product_image")}
+                          disabled={uploading}
+                        />
+                      </label>
+                    ) : (
+                      (() => {
+                        const count = viewerCount;
+                        const currentIndex = viewerIndex;
+                        const current = viewerCurrent;
+                        const handleImageAreaClick = (event) => {
+                          const bounds = event.currentTarget.getBoundingClientRect();
+                          const x = event.clientX - bounds.left;
+                          if (x < bounds.width / 3) {
+                            if (currentIndex === 0) {
+                              setViewerTip("已是第一张");
+                              setTimeout(() => setViewerTip(""), 1200);
+                            } else {
+                              changeGroupIndex("all", count, -1);
+                            }
+                            return;
+                          }
+                          if (x > (bounds.width * 2) / 3) {
+                            if (currentIndex === count - 1) {
+                              setViewerTip("已是最后一张");
+                              setTimeout(() => setViewerTip(""), 1200);
+                            } else {
+                              changeGroupIndex("all", count, 1);
+                            }
+                            return;
+                          }
+                          openOverlay();
+                        };
+                        const openOverlay = () => {
+                          setPreviewAsset({
+                            assets: allImageAssets,
+                            index: currentIndex,
+                            label: "图片",
+                          });
+                        };
+                        return (
+                          <div className="detail-asset-item edit-asset-item">
+                            <button
+                              className="edit-image-preview-area"
+                              type="button"
+                              onClick={handleImageAreaClick}
+                              onDoubleClick={openOverlay}
+                              title="单击左右切换，双击放大"
+                            >
+                              <img className="edit-image-preview-fixed" src={current.url} alt={current.title || "图片"} />
+                            </button>
+                          </div>
+                        );
+                      })()
+                    )}
+                  </div>
                 </div>
             </div>
           )}
@@ -344,9 +424,42 @@ export default function AddItem({ navigate, editItem }) {
       </div>
 
       {previewAsset && (
-        <button className="image-lightbox" type="button" onClick={() => setPreviewAsset(null)}>
-          <img className="image-lightbox-preview" src={previewAsset.url} alt={previewAsset.title || "图片预览"} />
-        </button>
+        <div className="image-lightbox">
+          <div className="image-lightbox-body" onClick={(e) => e.stopPropagation()}>
+            <div className="image-lightbox-top">
+              <div className="image-lightbox-meta">
+                <div className="gallery-chip">{TYPE_LABELS[previewAsset.assets[previewAsset.index].type] || "图片"}</div>
+                <div className="detail-related-meta">{(previewAsset.index + 1)}/{previewAsset.assets.length}</div>
+              </div>
+              <button className="image-lightbox-close" onClick={() => setPreviewAsset(null)} title="关闭">✖</button>
+            </div>
+            <button
+              className="image-lightbox-image-btn"
+              type="button"
+              onClick={(event) => {
+                const bounds = event.currentTarget.getBoundingClientRect();
+                const x = event.clientX - bounds.left;
+                setPreviewAsset((prev) => ({
+                  ...prev,
+                  index:
+                    x < bounds.width / 3
+                      ? (prev.index - 1 + prev.assets.length) % prev.assets.length
+                      : x > (bounds.width * 2) / 3
+                        ? (prev.index + 1) % prev.assets.length
+                        : prev.index,
+                }));
+              }}
+              title="点击左右切换"
+            >
+              <img
+                className="image-lightbox-preview"
+                style={{ maxWidth: "500px", maxHeight: "450px", width: "100%", height: "auto", objectFit: "contain", display: "block" }}
+                src={previewAsset.assets[previewAsset.index].url}
+                alt={previewAsset.assets[previewAsset.index].title || previewAsset.label || "图片预览"}
+              />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

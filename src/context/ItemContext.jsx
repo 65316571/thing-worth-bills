@@ -98,6 +98,45 @@ export function ItemProvider({ children }) {
     }));
   };
 
+  const updateItemAsset = async (id, assetId, data) => {
+    const response = await api.updateItemAsset(id, assetId, data);
+    setItems((prev) => prev.map((item) => {
+      if (item.id !== id) {
+        return item;
+      }
+      return {
+        ...item,
+        assets: (item.assets || []).map((asset) => (asset.id === response.asset.id ? response.asset : asset)),
+      };
+    }));
+    return response.asset;
+  };
+
+  const updateAsset = async (assetId, data) => {
+    const response = await api.updateAsset(assetId, data);
+    const nextAsset = response.asset;
+
+    setItems((prev) => {
+      const cleaned = prev.map((item) => ({
+        ...item,
+        assets: (item.assets || []).filter((asset) => asset.id !== nextAsset.id),
+      }));
+
+      return cleaned.map((item) => {
+        if (item.id !== nextAsset.itemId) {
+          return item;
+        }
+
+        return {
+          ...item,
+          assets: [nextAsset, ...(item.assets || [])],
+        };
+      });
+    });
+
+    return nextAsset;
+  };
+
   const addWish = async (wish) => {
     const response = await api.createWish(wish);
     setWishes((prev) => [response.wish, ...prev]);
@@ -123,9 +162,12 @@ export function ItemProvider({ children }) {
       reactivateItem,
       addItemAsset,
       deleteItemAsset,
+      updateItemAsset,
+      updateAsset,
       addWish,
       deleteWish,
     }),
+    [items, wishes, loading, error],
     [items, wishes, loading, error],
   );
 

@@ -5,6 +5,7 @@ import ItemDetail from "./pages/ItemDetail";
 import Stats from "./pages/Stats";
 import WishList from "./pages/WishList";
 import Data from "./pages/Data";
+import Gallery from "./pages/Gallery";
 import { ItemProvider } from "./context/ItemContext";
 import { useItems } from "./context/ItemContext";
 import { CATEGORIES, SORT_OPTIONS, calcDays, calcDailyCost, formatUsageDuration } from "./utils/calc";
@@ -486,6 +487,14 @@ function AppContent() {
                 <span className="desktop-menu-icon">◇</span>
                 <span className="desktop-menu-text">心愿墙</span>
               </button>
+              <button
+                className={`desktop-menu-btn ${desktopTab === "gallery" ? "active" : ""}`}
+                onClick={() => setDesktopTab("gallery")}
+                title="图库"
+              >
+                <span className="desktop-menu-icon">▥</span>
+                <span className="desktop-menu-text">图库</span>
+              </button>
             </div>
 
             <button className="desktop-switch-btn" onClick={() => setMode("chooser")} title="返回入口">
@@ -503,12 +512,14 @@ function AppContent() {
                 {desktopTab === "overview" && "总览"}
                 {desktopTab === "items" && "清单"}
                 {desktopTab === "wishes" && "心愿墙"}
+                {desktopTab === "gallery" && "图库"}
               </h2>
               <p className="desktop-subtitle">
                 {desktopTab === "value" && "直观查看每件物品的购买价值、拥有天数与每日成本。"}
                 {desktopTab === "overview" && "以宏观视角查看资产分布、近期变更和全局统计。"}
                 {desktopTab === "items" && "统一管理物品资料、编辑信息与维护附件。"}
                 {desktopTab === "wishes" && "维护你的待购清单与目标价格。"}
+                {desktopTab === "gallery" && "管理所有图片资产，支持分类、重命名与上传。"}
               </p>
             </div>
             <div className="desktop-header-actions">
@@ -672,6 +683,11 @@ function AppContent() {
                   )}
                 </div>
               </section>
+            </>
+          )}
+          {desktopTab === "gallery" && (
+            <>
+              <Gallery />
             </>
           )}
 
