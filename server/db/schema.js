@@ -38,8 +38,19 @@ const CREATE_ITEM_ASSETS_TABLE_SQL = `
     url TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT item_assets_type_check CHECK (asset_type IN ('image', 'tutorial', 'link'))
+    CONSTRAINT item_assets_type_check CHECK (asset_type IN ('image', 'product_image', 'order_image', 'tutorial_image', 'tutorial', 'link'))
   );
+`;
+
+const FIX_ITEM_ASSETS_TYPE_CONSTRAINT_SQL = `
+  ALTER TABLE item_assets
+  DROP CONSTRAINT IF EXISTS item_assets_type_check;
+`;
+
+const ADD_ITEM_ASSETS_TYPE_CONSTRAINT_SQL = `
+  ALTER TABLE item_assets
+  ADD CONSTRAINT item_assets_type_check
+  CHECK (asset_type IN ('image', 'product_image', 'order_image', 'tutorial_image', 'tutorial', 'link'));
 `;
 
 const CREATE_WISHES_TABLE_SQL = `
@@ -129,6 +140,8 @@ export async function initializeDatabase({ withSeed = true } = {}) {
   await query(ALTER_ITEMS_ADD_PURCHASE_CHANNEL_SQL);
   await query(ALTER_ITEMS_ADD_BUNDLE_NAME_SQL);
   await query(CREATE_ITEM_ASSETS_TABLE_SQL);
+  await query(FIX_ITEM_ASSETS_TYPE_CONSTRAINT_SQL);
+  await query(ADD_ITEM_ASSETS_TYPE_CONSTRAINT_SQL);
   await query(CREATE_WISHES_TABLE_SQL);
   await query(CREATE_ITEMS_UPDATED_AT_TRIGGER_SQL);
   await query(CREATE_ITEM_ASSETS_UPDATED_AT_TRIGGER_SQL);

@@ -50,7 +50,7 @@ export default function Stats({ navigate }) {
 
         {/* Summary Cards */}
         <div className="stats-summary">
-          <div className="summary-card dark">
+          <div className="summary-card">
             <div className="summary-value">¥{totalSpend.toLocaleString("zh-CN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
             <div className="summary-label">累计消费金额</div>
           </div>

@@ -10,7 +10,7 @@ import { env } from "./config/env.js";
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: "15mb" }));
+app.use(express.json({ limit: "25mb" }));
 
 app.get("/api", (req, res) => {
   res.json({

@@ -29,7 +29,7 @@ export default function WishList({ navigate }) {
       <div className="page-header">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>
-            <div className="page-title">心愿单</div>
+            <div className="page-title">心愿墙</div>
             <div className="page-subtitle">记录想要的物品，等待好价</div>
           </div>
           <button
@@ -95,7 +95,7 @@ export default function WishList({ navigate }) {
               onChange={(e) => set("note", e.target.value)}
             />
             <button className="submit-btn" style={{ marginTop: 0 }} onClick={handleAdd}>
-              加入心愿单
+              加入心愿墙
             </button>
           </div>
         )}
@@ -108,7 +108,7 @@ export default function WishList({ navigate }) {
         {wishes.length === 0 && !showForm ? (
           <div className="empty-state">
             <div className="empty-icon">🛒</div>
-            <div className="empty-title">心愿单是空的</div>
+            <div className="empty-title">心愿墙是空的</div>
             <div className="empty-desc">添加想买的物品，<br />等咸鱼降价了提醒你</div>
           </div>
         ) : (

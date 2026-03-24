@@ -4,6 +4,7 @@ import AddItem from "./pages/AddItem";
 import ItemDetail from "./pages/ItemDetail";
 import Stats from "./pages/Stats";
 import WishList from "./pages/WishList";
+import Data from "./pages/Data";
 import { ItemProvider } from "./context/ItemContext";
 import { useItems } from "./context/ItemContext";
 import { CATEGORIES, SORT_OPTIONS, calcDays, calcDailyCost, formatUsageDuration } from "./utils/calc";
@@ -39,6 +40,7 @@ function AppContent() {
   const [desktopOverviewSort, setDesktopOverviewSort] = useState("date_desc");
   const [desktopOverviewStatus, setDesktopOverviewStatus] = useState("all");
   const [desktopItemFormOpen, setDesktopItemFormOpen] = useState(false);
+  const [desktopSidebarExpanded, setDesktopSidebarExpanded] = useState(true);
   const [desktopItemsSearch, setDesktopItemsSearch] = useState("");
   const [desktopWishFormOpen, setDesktopWishFormOpen] = useState(false);
   const [desktopValueImageIndex, setDesktopValueImageIndex] = useState({});
@@ -49,6 +51,7 @@ function AppContent() {
     category: "",
     note: "",
   });
+
   const {
     items,
     wishes,
@@ -435,43 +438,61 @@ function AppContent() {
 
   if (mode === "desktop") {
     return (
-      <div className="desktop-shell">
+      <div className={`desktop-shell ${desktopSidebarExpanded ? "sidebar-expanded" : "sidebar-collapsed"}`}>
         <aside className="desktop-sidebar">
-          <div>
-            <div className="desktop-brand">物值账</div>
-            <div className="desktop-brand-subtitle">你的物品价值管理台</div>
-          </div>
-
-          <div className="desktop-menu">
-            <button
-              className={`desktop-menu-btn ${desktopTab === "value" ? "active" : ""}`}
-              onClick={() => setDesktopTab("value")}
-            >
-              主页
-            </button>
-            <button
-              className={`desktop-menu-btn ${desktopTab === "overview" ? "active" : ""}`}
-              onClick={() => setDesktopTab("overview")}
-            >
-              总览
-            </button>
-            <button
-              className={`desktop-menu-btn ${desktopTab === "items" ? "active" : ""}`}
-              onClick={() => setDesktopTab("items")}
-            >
-              清单
-            </button>
-            <button
-              className={`desktop-menu-btn ${desktopTab === "wishes" ? "active" : ""}`}
-              onClick={() => setDesktopTab("wishes")}
-            >
-              心愿单
-            </button>
-          </div>
-
-          <button className="desktop-switch-btn" onClick={() => setMode("chooser")}>
-            返回入口选择页
+          <button 
+            className="desktop-sidebar-toggle" 
+            onClick={() => setDesktopSidebarExpanded(!desktopSidebarExpanded)}
+            title={desktopSidebarExpanded ? "收起侧边栏" : "展开侧边栏"}
+          >
+            {desktopSidebarExpanded ? "◂" : "▸"}
           </button>
+          <div className="desktop-sidebar-content">
+            <div>
+              <div className="desktop-brand">物值账</div>
+              <div className="desktop-brand-subtitle">你的物品价值管理台</div>
+            </div>
+
+            <div className="desktop-menu">
+              <button
+                className={`desktop-menu-btn ${desktopTab === "value" ? "active" : ""}`}
+                onClick={() => setDesktopTab("value")}
+                title="主页"
+              >
+                <span className="desktop-menu-icon">⌂</span>
+                <span className="desktop-menu-text">主页</span>
+              </button>
+              <button
+                className={`desktop-menu-btn ${desktopTab === "overview" ? "active" : ""}`}
+                onClick={() => setDesktopTab("overview")}
+                title="总览"
+              >
+                <span className="desktop-menu-icon">◎</span>
+                <span className="desktop-menu-text">总览</span>
+              </button>
+              <button
+                className={`desktop-menu-btn ${desktopTab === "items" ? "active" : ""}`}
+                onClick={() => setDesktopTab("items")}
+                title="清单"
+              >
+                <span className="desktop-menu-icon">◈</span>
+                <span className="desktop-menu-text">清单</span>
+              </button>
+              <button
+                className={`desktop-menu-btn ${desktopTab === "wishes" ? "active" : ""}`}
+                onClick={() => setDesktopTab("wishes")}
+                title="心愿墙"
+              >
+                <span className="desktop-menu-icon">◇</span>
+                <span className="desktop-menu-text">心愿墙</span>
+              </button>
+            </div>
+
+            <button className="desktop-switch-btn" onClick={() => setMode("chooser")} title="返回入口">
+              <span className="desktop-menu-icon">⎋</span>
+              <span className="desktop-menu-text">返回入口选择页</span>
+            </button>
+          </div>
         </aside>
 
         <main className={`desktop-main ${desktopTab === "value" ? "desktop-main-scroll" : ""}`}>
@@ -481,7 +502,7 @@ function AppContent() {
                 {desktopTab === "value" && "主页"}
                 {desktopTab === "overview" && "总览"}
                 {desktopTab === "items" && "清单"}
-                {desktopTab === "wishes" && "心愿单"}
+                {desktopTab === "wishes" && "心愿墙"}
               </h2>
               <p className="desktop-subtitle">
                 {desktopTab === "value" && "直观查看每件物品的购买价值、拥有天数与每日成本。"}
@@ -875,7 +896,7 @@ function AppContent() {
             <section className="desktop-panel">
               <div className="desktop-panel-head">
                 <div>
-                  <div className="desktop-panel-title">心愿单</div>
+                  <div className="desktop-panel-title">心愿墙</div>
                   <div className="desktop-panel-subtitle">与 移动端共用同一套新增与删除接口。</div>
                 </div>
                 <button className="desktop-primary-btn" onClick={() => setDesktopWishFormOpen((value) => !value)}>
@@ -996,6 +1017,7 @@ function AppContent() {
         {page === "detail" && <ItemDetail item={selectedItem} navigate={navigate} />}
         {page === "stats" && <Stats navigate={navigate} />}
         {page === "wish" && <WishList navigate={navigate} />}
+        {page === "data" && <Data navigate={navigate} />}
 
         {page !== "add" && page !== "detail" && (
           <nav className="bottom-nav">
@@ -1023,9 +1045,12 @@ function AppContent() {
               <span className="nav-icon">◇</span>
               <span>心愿</span>
             </button>
-            <button className="nav-btn" onClick={() => setMode("chooser")}>
+            <button
+              className={`nav-btn ${page === "data" ? "active" : ""}`}
+              onClick={() => navigate("data")}
+            >
               <span className="nav-icon">◉</span>
-              <span>模式</span>
+              <span>数据</span>
             </button>
           </nav>
         )}
