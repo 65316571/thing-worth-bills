@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { useItems } from "../context/ItemContext";
 import { calcDays, calcDailyCost } from "../utils/calc";
+import VipLibraryPanel from "../components/VipLibraryPanel";
 
 export default function Data({ navigate }) {
   const { items, deleteItem, deactivateItem, reactivateItem } = useItems();
   const [search, setSearch] = useState("");
   const [expandedItemId, setExpandedItemId] = useState(null);
+  const [tab, setTab] = useState("items");
 
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -49,11 +51,19 @@ export default function Data({ navigate }) {
   return (
     <div className="app">
       <div className="page-header">
-        <div className="page-title">数据</div>
-        <div className="page-subtitle">名称 · 使用天数 · 每日成本</div>
+        <div className="page-title">数据 / 会员</div>
+        <div className="page-subtitle">物品数据总表与会员库统一放在这里管理</div>
       </div>
 
       <div className="scroll-area">
+        <div className="wish-filter-row" style={{ marginBottom: 16 }}>
+          <button className={`wish-filter-chip ${tab === "items" ? "active" : ""}`} onClick={() => setTab("items")}>物品数据</button>
+          <button className={`wish-filter-chip ${tab === "vip" ? "active" : ""}`} onClick={() => setTab("vip")}>会员库</button>
+        </div>
+
+        {tab === "vip" ? (
+          <VipLibraryPanel mobile />
+        ) : (
         <div className="desktop-panel">
           <div className="desktop-panel-head desktop-items-panel-head">
             <div>
@@ -127,6 +137,7 @@ export default function Data({ navigate }) {
             <div className="desktop-empty-inline desktop-items-empty">没有匹配的物品</div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

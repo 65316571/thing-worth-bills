@@ -53,17 +53,45 @@ const ADD_ITEM_ASSETS_TYPE_CONSTRAINT_SQL = `
   CHECK (asset_type IN ('image', 'product_image', 'order_image', 'tutorial_image', 'tutorial', 'link'));
 `;
 
-const CREATE_WISHES_TABLE_SQL = `
-  CREATE TABLE IF NOT EXISTS wishes (
+const CREATE_WISH_BOARD_ITEMS_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS wish_board_items (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     target_price NUMERIC(12, 2) NOT NULL DEFAULT 0,
-    current_price NUMERIC(12, 2),
     category VARCHAR(100) NOT NULL DEFAULT '未分类',
+    priority VARCHAR(20) NOT NULL DEFAULT 'medium',
+    purchase_purpose TEXT,
     note TEXT,
-    link TEXT,
+    desired_channel VARCHAR(255),
+    target_date DATE,
+    status VARCHAR(20) NOT NULL DEFAULT 'planning',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT wish_board_items_priority_check CHECK (priority IN ('low', 'medium', 'high')),
+    CONSTRAINT wish_board_items_status_check CHECK (status IN ('planning', 'watching', 'ready', 'purchased', 'archived'))
+  );
+`;
+
+const CREATE_VIP_MEMBERSHIPS_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS vip_memberships (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    level VARCHAR(100),
+    website TEXT NOT NULL,
+    account_label VARCHAR(255),
+    renewal_cycle VARCHAR(50),
+    price NUMERIC(12, 2),
+    currency VARCHAR(20) NOT NULL DEFAULT 'CNY',
+    benefits TEXT NOT NULL DEFAULT '',
+    expire_at DATE NOT NULL,
+    remind_before_days INTEGER NOT NULL DEFAULT 7,
+    auto_renew BOOLEAN NOT NULL DEFAULT FALSE,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    note TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT vip_memberships_status_check CHECK (status IN ('active', 'expiring', 'expired', 'paused')),
+    CONSTRAINT vip_memberships_remind_before_days_check CHECK (remind_before_days >= 0)
   );
 `;
 
@@ -85,18 +113,26 @@ const CREATE_ITEMS_UPDATED_AT_TRIGGER_SQL = `
   EXECUTE FUNCTION set_updated_at();
 `;
 
-const CREATE_WISHES_UPDATED_AT_TRIGGER_SQL = `
-  DROP TRIGGER IF EXISTS wishes_set_updated_at ON wishes;
-  CREATE TRIGGER wishes_set_updated_at
-  BEFORE UPDATE ON wishes
-  FOR EACH ROW
-  EXECUTE FUNCTION set_updated_at();
-`;
-
 const CREATE_ITEM_ASSETS_UPDATED_AT_TRIGGER_SQL = `
   DROP TRIGGER IF EXISTS item_assets_set_updated_at ON item_assets;
   CREATE TRIGGER item_assets_set_updated_at
   BEFORE UPDATE ON item_assets
+  FOR EACH ROW
+  EXECUTE FUNCTION set_updated_at();
+`;
+
+const CREATE_WISH_BOARD_ITEMS_UPDATED_AT_TRIGGER_SQL = `
+  DROP TRIGGER IF EXISTS wish_board_items_set_updated_at ON wish_board_items;
+  CREATE TRIGGER wish_board_items_set_updated_at
+  BEFORE UPDATE ON wish_board_items
+  FOR EACH ROW
+  EXECUTE FUNCTION set_updated_at();
+`;
+
+const CREATE_VIP_MEMBERSHIPS_UPDATED_AT_TRIGGER_SQL = `
+  DROP TRIGGER IF EXISTS vip_memberships_set_updated_at ON vip_memberships;
+  CREATE TRIGGER vip_memberships_set_updated_at
+  BEFORE UPDATE ON vip_memberships
   FOR EACH ROW
   EXECUTE FUNCTION set_updated_at();
 `;
@@ -117,8 +153,20 @@ const CREATE_ITEM_ASSETS_ITEM_INDEX_SQL = `
   CREATE INDEX IF NOT EXISTS idx_item_assets_item_id ON item_assets(item_id);
 `;
 
-const CREATE_WISHES_CATEGORY_INDEX_SQL = `
-  CREATE INDEX IF NOT EXISTS idx_wishes_category ON wishes(category);
+const CREATE_WISH_BOARD_STATUS_INDEX_SQL = `
+  CREATE INDEX IF NOT EXISTS idx_wish_board_items_status ON wish_board_items(status);
+`;
+
+const CREATE_WISH_BOARD_CATEGORY_INDEX_SQL = `
+  CREATE INDEX IF NOT EXISTS idx_wish_board_items_category ON wish_board_items(category);
+`;
+
+const CREATE_VIP_MEMBERSHIPS_STATUS_INDEX_SQL = `
+  CREATE INDEX IF NOT EXISTS idx_vip_memberships_status ON vip_memberships(status);
+`;
+
+const CREATE_VIP_MEMBERSHIPS_EXPIRE_AT_INDEX_SQL = `
+  CREATE INDEX IF NOT EXISTS idx_vip_memberships_expire_at ON vip_memberships(expire_at);
 `;
 
 const seedItems = [
@@ -129,9 +177,16 @@ const seedItems = [
   ["旧款机械键盘", 399, "2021-03-10", "2023-01-01", "电子产品", "淘宝", null, null, "inactive", "已换掉"],
 ];
 
-const seedWishes = [
-  ["iPad Pro 11寸", 3000, null, "电子产品", "等价格降到3000以下再买", null],
-  ["Switch OLED", 1800, null, "游戏设备", "咸鱼找个好价", null],
+const seedWishBoardItems = [
+  ["iPad mini 7", 3299, "电子产品", "high", "通勤看书、记灵感和轻量手账", "等教育优惠或二手好价", "京东 / 闲鱼", "2026-05-31", "watching"],
+  ["人体工学椅", 1800, "其他", "medium", "改善久坐办公和剪视频时的腰背支撑", "优先关注二手成色好的品牌款", "闲鱼", "2026-06-20", "planning"],
+  ["SONY WH-1000XM6", 2199, "耳机", "medium", "出差降噪、专注办公和夜间听歌", "等首发热度过后关注活动价", "天猫国际", null, "watching"],
+];
+
+const seedVipMemberships = [
+  ["哔哩哔哩大会员", "年度", "https://www.bilibili.com", "主账号", "yearly", 238, "CNY", "番剧抢先看,高码率画质,专属装扮", "2026-11-18", 15, false, "active", "主要给追番和投屏用"],
+  ["网易云音乐黑胶", "连续包月", "https://music.163.com", "手机尾号 5521", "monthly", 18, "CNY", "无损音质,会员曲库,听歌识曲增强", "2026-04-06", 7, true, "expiring", "如果下月使用频率不高可以先停"],
+  ["ChatGPT Plus", "月付", "https://chatgpt.com", "创作账号", "monthly", 20, "USD", "更强模型,更快响应,高级工具能力", "2026-04-22", 5, true, "active", "写作和原型设计都在用"],
 ];
 
 export async function initializeDatabase({ withSeed = true } = {}) {
@@ -142,22 +197,29 @@ export async function initializeDatabase({ withSeed = true } = {}) {
   await query(CREATE_ITEM_ASSETS_TABLE_SQL);
   await query(FIX_ITEM_ASSETS_TYPE_CONSTRAINT_SQL);
   await query(ADD_ITEM_ASSETS_TYPE_CONSTRAINT_SQL);
-  await query(CREATE_WISHES_TABLE_SQL);
+  await query(CREATE_WISH_BOARD_ITEMS_TABLE_SQL);
+  await query(CREATE_VIP_MEMBERSHIPS_TABLE_SQL);
   await query(CREATE_ITEMS_UPDATED_AT_TRIGGER_SQL);
   await query(CREATE_ITEM_ASSETS_UPDATED_AT_TRIGGER_SQL);
-  await query(CREATE_WISHES_UPDATED_AT_TRIGGER_SQL);
+  await query(CREATE_WISH_BOARD_ITEMS_UPDATED_AT_TRIGGER_SQL);
+  await query(CREATE_VIP_MEMBERSHIPS_UPDATED_AT_TRIGGER_SQL);
   await query(CREATE_ITEMS_INDEX_SQL);
   await query(CREATE_ITEMS_CATEGORY_INDEX_SQL);
   await query(CREATE_ITEMS_BUNDLE_INDEX_SQL);
   await query(CREATE_ITEM_ASSETS_ITEM_INDEX_SQL);
-  await query(CREATE_WISHES_CATEGORY_INDEX_SQL);
+  await query(CREATE_WISH_BOARD_STATUS_INDEX_SQL);
+  await query(CREATE_WISH_BOARD_CATEGORY_INDEX_SQL);
+  await query(CREATE_VIP_MEMBERSHIPS_STATUS_INDEX_SQL);
+  await query(CREATE_VIP_MEMBERSHIPS_EXPIRE_AT_INDEX_SQL);
 
   let insertedItems = 0;
-  let insertedWishes = 0;
+  let insertedWishBoardItems = 0;
+  let insertedVipMemberships = 0;
 
   if (withSeed) {
     const itemsCountResult = await query("SELECT COUNT(*)::int AS count FROM items");
-    const wishesCountResult = await query("SELECT COUNT(*)::int AS count FROM wishes");
+    const wishBoardCountResult = await query("SELECT COUNT(*)::int AS count FROM wish_board_items");
+    const vipMembershipsCountResult = await query("SELECT COUNT(*)::int AS count FROM vip_memberships");
 
     if (itemsCountResult.rows[0].count === 0) {
       for (const item of seedItems) {
@@ -172,24 +234,43 @@ export async function initializeDatabase({ withSeed = true } = {}) {
       }
     }
 
-    if (wishesCountResult.rows[0].count === 0) {
-      for (const wish of seedWishes) {
+    if (wishBoardCountResult.rows[0].count === 0) {
+      for (const wishBoardItem of seedWishBoardItems) {
         await query(
           `
-            INSERT INTO wishes (name, target_price, current_price, category, note, link)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO wish_board_items (
+              name, target_price, category, priority, purchase_purpose, note, desired_channel, target_date, status
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           `,
-          wish,
+          wishBoardItem,
         );
-        insertedWishes += 1;
+        insertedWishBoardItems += 1;
+      }
+    }
+
+    if (vipMembershipsCountResult.rows[0].count === 0) {
+      for (const vipMembership of seedVipMemberships) {
+        await query(
+          `
+            INSERT INTO vip_memberships (
+              name, level, website, account_label, renewal_cycle, price, currency, benefits,
+              expire_at, remind_before_days, auto_renew, status, note
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          `,
+          vipMembership,
+        );
+        insertedVipMemberships += 1;
       }
     }
   }
 
   return {
     success: true,
-    tables: ["items", "item_assets", "wishes"],
+    tables: ["items", "item_assets", "wish_board_items", "vip_memberships"],
     insertedItems,
-    insertedWishes,
+    insertedWishBoardItems,
+    insertedVipMemberships,
   };
 }

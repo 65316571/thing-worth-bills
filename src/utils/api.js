@@ -107,16 +107,36 @@ export const api = {
     return request(`/api/assets${qs ? `?${qs}` : ""}`);
   },
   getWishes() {
-    return request("/api/wishes");
+    return request("/api/wish-board-items");
   },
   createWish(payload) {
-    return request("/api/wishes", {
+    return request("/api/wish-board-items", {
       method: "POST",
       body: JSON.stringify(payload),
     });
   },
   deleteWish(id) {
-    return request(`/api/wishes/${id}`, {
+    return request(`/api/wish-board-items/${id}`, {
+      method: "DELETE",
+    });
+  },
+  getVipMemberships() {
+    return request("/api/vip-memberships");
+  },
+  createVipMembership(payload) {
+    return request("/api/vip-memberships", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  updateVipMembership(id, payload) {
+    return request(`/api/vip-memberships/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+  deleteVipMembership(id) {
+    return request(`/api/vip-memberships/${id}`, {
       method: "DELETE",
     });
   },

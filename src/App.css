@@ -948,6 +948,12 @@ input, select, textarea { font-family: inherit; }
   border-radius: 14px;
 }
 
+:root[data-theme='dark'] .desktop-form-card {
+  background: color-mix(in srgb, var(--surface) 92%, var(--bg));
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
 .desktop-form-grid {
   display: grid;
   gap: 12px;
@@ -2199,6 +2205,28 @@ input, select, textarea { font-family: inherit; }
   transition: border-color 0.15s, box-shadow 0.15s;
   appearance: none;
   -webkit-appearance: none;
+}
+
+:root[data-theme='dark'] .form-input,
+:root[data-theme='dark'] .form-select,
+:root[data-theme='dark'] .form-textarea {
+  background: color-mix(in srgb, var(--surface) 88%, var(--bg));
+  color: var(--ink);
+  border-color: var(--border);
+}
+
+:root[data-theme='dark'] .form-input::placeholder,
+:root[data-theme='dark'] .form-textarea::placeholder {
+  color: var(--ink-4);
+}
+
+:root[data-theme='dark'] .form-select option {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+:root[data-theme='dark'] input[type="date"] {
+  color-scheme: dark;
 }
 .form-input:focus, .form-select:focus, .form-textarea:focus {
   border-color: var(--accent);
@@ -3506,4 +3534,271 @@ input, select, textarea { font-family: inherit; }
   font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.vip-summary-grid,
+.wish-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.vip-summary-card,
+.wish-summary-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+}
+
+.vip-summary-card span,
+.wish-summary-card span {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.vip-summary-card strong,
+.wish-summary-card strong {
+  display: block;
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  color: var(--ink);
+}
+
+.vip-summary-card.accent,
+.wish-summary-card.accent {
+  background: var(--accent-soft-bg);
+  border-color: var(--accent-soft-border);
+}
+
+.vip-summary-card.warning {
+  background: var(--amber-bg);
+  border-color: rgba(146,64,14,0.18);
+}
+
+.vip-summary-card.danger {
+  background: var(--red-bg);
+  border-color: rgba(153,27,27,0.18);
+}
+
+.vip-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.vip-toolbar-search {
+  width: 100%;
+}
+
+.vip-filter-group,
+.wish-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vip-filter-chip,
+.wish-filter-chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.vip-filter-chip.active,
+.wish-filter-chip.active {
+  color: white;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.vip-grid,
+.wish-board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.vip-card,
+.wish-board-card {
+  padding: 20px;
+  border-radius: 18px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.vip-card.status-urgent {
+  border-color: rgba(146,64,14,0.35);
+}
+
+.vip-card.status-expired {
+  border-color: rgba(153,27,27,0.28);
+  background: color-mix(in srgb, var(--red-bg) 58%, var(--surface));
+}
+
+.vip-card-head,
+.wish-board-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vip-name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.vip-name,
+.wish-board-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.vip-level,
+.wish-board-price {
+  margin-top: 6px;
+  color: var(--accent);
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+
+.vip-status-badge {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+
+.vip-status-badge.active {
+  background: var(--green-bg);
+  color: var(--green-text);
+  border-color: var(--green-border);
+}
+
+.vip-status-badge.expiring,
+.vip-status-badge.urgent {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border-color: rgba(146,64,14,0.2);
+}
+
+.vip-status-badge.expired {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: rgba(153,27,27,0.2);
+}
+
+.vip-info-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.vip-info-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 13px;
+}
+
+.vip-info-item span {
+  color: var(--ink-4);
+}
+
+.vip-info-item strong,
+.vip-info-item a {
+  color: var(--ink);
+  text-align: right;
+  word-break: break-all;
+}
+
+.vip-info-item a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.vip-benefits,
+.vip-note-block,
+.wish-board-section {
+  margin-top: 16px;
+}
+
+.vip-section-label,
+.wish-board-label {
+  font-size: 11px;
+  color: var(--ink-4);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.vip-tag-list,
+.wish-board-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vip-tag,
+.wish-board-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.vip-tag.muted,
+.wish-board-section.muted p {
+  color: var(--ink-3);
+}
+
+.vip-note-block p,
+.wish-board-section p {
+  color: var(--ink-2);
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.wish-board-chip.purpose {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border-color: rgba(146,64,14,0.18);
+}
+
+.wish-form-card .form-input,
+.wish-form-card .form-select,
+.wish-form-card .form-textarea,
+.vip-form-card .form-input,
+.vip-form-card .form-select,
+.vip-form-card .form-textarea {
+  width: 100%;
+}
+
+.wish-mobile-shell,
+.vip-mobile-shell {
+  background: transparent;
 }

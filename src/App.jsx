@@ -6,6 +6,8 @@ import Stats from "./pages/Stats";
 import WishList from "./pages/WishList";
 import Data from "./pages/Data";
 import Gallery from "./pages/Gallery";
+import VipLibraryPanel from "./components/VipLibraryPanel";
+import WishBoardPanel from "./components/WishBoardPanel";
 import { ItemProvider } from "./context/ItemContext";
 import { useItems } from "./context/ItemContext";
 import { CATEGORIES, SORT_OPTIONS, calcDays, calcDailyCost, formatUsageDuration } from "./utils/calc";
@@ -508,6 +510,22 @@ function AppContent() {
                 <span className="desktop-menu-text">清单</span>
               </button>
               <button
+                className={`desktop-menu-btn ${desktopTab === "gallery" ? "active" : ""}`}
+                onClick={() => setDesktopTab("gallery")}
+                title="图库"
+              >
+                <span className="desktop-menu-icon">🖼️</span>
+                <span className="desktop-menu-text">图库</span>
+              </button>
+                <button
+                className={`desktop-menu-btn ${desktopTab === "vip" ? "active" : ""}`}
+                onClick={() => setDesktopTab("vip")}
+                title="会员库"
+              >
+                <span className="desktop-menu-icon">💰</span>
+                <span className="desktop-menu-text">会员库</span>
+              </button>
+              <button
                 className={`desktop-menu-btn ${desktopTab === "wishes" ? "active" : ""}`}
                 onClick={() => setDesktopTab("wishes")}
                 title="心愿墙"
@@ -516,12 +534,12 @@ function AppContent() {
                 <span className="desktop-menu-text">心愿墙</span>
               </button>
               <button
-                className={`desktop-menu-btn ${desktopTab === "gallery" ? "active" : ""}`}
-                onClick={() => setDesktopTab("gallery")}
-                title="图库"
+                className={`desktop-menu-btn ${desktopTab === "shop" ? "active" : ""}`}
+                onClick={() => setDesktopTab("shop")}
+                title="闲鱼铺"
               >
-                <span className="desktop-menu-icon">🖼️</span>
-                <span className="desktop-menu-text">图库</span>
+                <span className="desktop-menu-icon">🐟</span>
+                <span className="desktop-menu-text">闲鱼铺</span>
               </button>
             </div>
 
@@ -539,15 +557,19 @@ function AppContent() {
                 {desktopTab === "value" && "主页"}
                 {desktopTab === "overview" && "总览"}
                 {desktopTab === "items" && "清单"}
-                {desktopTab === "wishes" && "心愿墙"}
                 {desktopTab === "gallery" && "图库"}
+                {desktopTab === "vip" && "会员库"}
+                {desktopTab === "wishes" && "心愿墙"}
+                {desktopTab === "shop" && "闲鱼铺"}
               </h2>
               <p className="desktop-subtitle">
                 {desktopTab === "value" && "直观查看每件物品的购买价值、拥有天数与每日成本。"}
                 {desktopTab === "overview" && "以宏观视角查看资产分布、近期变更和全局统计。"}
                 {desktopTab === "items" && "统一管理物品资料、编辑信息与维护附件。"}
-                {desktopTab === "wishes" && "维护你的待购清单与目标价格。"}
                 {desktopTab === "gallery" && "管理所有图片资产，支持分类、重命名与上传。"}
+                {desktopTab === "vip" && "管理所有会员资产，包括会员信息、相关地址、会员时长。"}
+                {desktopTab === "wishes" && "维护你的待购清单与目标价格。"}
+                {desktopTab === "shop" && "维护你的闲鱼铺，包括检测物品价格、出售闲置物品。"}
               </p>
             </div>
             <div className="desktop-header-actions">
@@ -974,92 +996,9 @@ function AppContent() {
             </>
           )}
 
-          {desktopTab === "wishes" && (
-            <section className="desktop-panel">
-              <div className="desktop-panel-head">
-                <div>
-                  <div className="desktop-panel-title">心愿墙</div>
-                  <div className="desktop-panel-subtitle">与 移动端共用同一套新增与删除接口。</div>
-                </div>
-                <button className="desktop-primary-btn" onClick={() => setDesktopWishFormOpen((value) => !value)}>
-                  {desktopWishFormOpen ? "收起表单" : "+ 添加心愿"}
-                </button>
-              </div>
+          {desktopTab === "vip" && <VipLibraryPanel />}
 
-              {desktopWishFormOpen && (
-                <div className="desktop-form-card">
-                  <div className="desktop-form-grid two-col">
-                    <input
-                      className="form-input"
-                      placeholder="物品名称 *"
-                      value={desktopWishForm.name}
-                      onChange={(e) => setDesktopWishField("name", e.target.value)}
-                    />
-                    <input
-                      className="form-input"
-                      type="number"
-                      placeholder="目标价格 *"
-                      value={desktopWishForm.targetPrice}
-                      onChange={(e) => setDesktopWishField("targetPrice", e.target.value)}
-                    />
-                  </div>
-                  <div className="desktop-form-grid two-col">
-                    <select
-                      className="form-select"
-                      value={desktopWishForm.category}
-                      onChange={(e) => setDesktopWishField("category", e.target.value)}
-                    >
-                      <option value="">选择分类</option>
-                      {CATEGORIES.map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                    </select>
-                    <div />
-                  </div>
-                  <textarea
-                    className="form-textarea"
-                    placeholder="备注（可选）"
-                    value={desktopWishForm.note}
-                    onChange={(e) => setDesktopWishField("note", e.target.value)}
-                  />
-                  <div className="desktop-form-actions">
-                    <button className="desktop-primary-btn" onClick={handleDesktopWishAdd}>
-                      保存心愿
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="desktop-wish-grid">
-                {wishes.map((wish) => (
-                  <article className="desktop-wish-card" key={wish.id}>
-                    <div className="desktop-wish-card-head">
-                      <div>
-                        <div className="desktop-wish-name">{wish.name}</div>
-                        <div className="desktop-wish-price">目标价 ¥{Number(wish.targetPrice || 0).toFixed(2)}</div>
-                      </div>
-                      <button
-                        className="desktop-action-btn danger"
-                        onClick={async () => {
-                          try {
-                            await deleteWish(wish.id);
-                          } catch (requestError) {
-                            alert(requestError.message || "删除心愿失败");
-                          }
-                        }}
-                      >
-                        删除
-                      </button>
-                    </div>
-                    <div className="desktop-wish-meta">{wish.category || "未分类"}</div>
-                    <div className="desktop-wish-note">{wish.note || "暂无备注"}</div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          )}
+          {desktopTab === "wishes" && <WishBoardPanel />}
         </main>
       </div>
     );

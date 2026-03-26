@@ -4,7 +4,8 @@ import healthRouter from "./routes/health.js";
 import itemsRouter from "./routes/items.js";
 import setupRouter from "./routes/setup.js";
 import uploadsRouter from "./routes/uploads.js";
-import wishesRouter from "./routes/wishes.js";
+import vipMembershipsRouter from "./routes/vipMemberships.js";
+import wishBoardItemsRouter from "./routes/wishBoardItems.js";
 import { env } from "./config/env.js";
 
 const app = express();
@@ -23,7 +24,8 @@ app.use("/api", healthRouter);
 app.use("/api", itemsRouter);
 app.use("/api", setupRouter);
 app.use("/api", uploadsRouter);
-app.use("/api", wishesRouter);
+app.use("/api", wishBoardItemsRouter);
+app.use("/api", vipMembershipsRouter);
 
 app.use((req, res) => {
   res.status(404).json({
