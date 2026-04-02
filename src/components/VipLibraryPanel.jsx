@@ -287,14 +287,8 @@ export default function VipLibraryPanel({ mobile = false }) {
         </article>
       </div>
 
-      <div className="vip-toolbar">
-        <input
-          className="form-input vip-toolbar-search"
-          placeholder="搜索会员名称、网址、权益"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-        />
-        <div className="vip-filter-group">
+      <div className="wish-toolbar">
+        <div className="wish-filter-row">
           {[
             ["all", "全部"],
             ["active", "正常"],
@@ -304,13 +298,24 @@ export default function VipLibraryPanel({ mobile = false }) {
           ].map(([value, label]) => (
             <button
               key={value}
-              className={`vip-filter-chip ${filter === value ? "active" : ""}`}
+              className={`wish-filter-chip ${filter === value ? "active" : ""}`}
               onClick={() => setFilter(value)}
             >
               {label}
             </button>
           ))}
         </div>
+        <div className="wish-search-wrap">
+          <input
+            className="form-input wish-search-input"
+            placeholder="搜索会员名称、网址、权益"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
         <select className="form-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
           <option value="expireAtAsc">按到期时间升序</option>
           <option value="expireAtDesc">按到期时间降序</option>
@@ -360,8 +365,9 @@ export default function VipLibraryPanel({ mobile = false }) {
         </div>
       )}
 
-      <div className="vip-grid">
-        {filteredVips.map((vip) => {
+      <div className="vip-board-grid-container" style={{ flex: '1 1 auto', minHeight: 0, maxHeight: 'calc(100vh - 380px)', overflowY: 'auto' }}>
+        <div className="vip-grid">
+          {filteredVips.map((vip) => {
           const status = getVipStatus(vip.expireAt);
           const daysLeft = getDaysLeft(vip.expireAt);
 
@@ -436,7 +442,8 @@ export default function VipLibraryPanel({ mobile = false }) {
         })}
       </div>
 
-      {filteredVips.length === 0 && <div className="desktop-empty-inline">当前筛选条件下暂无会员记录。</div>}
+  </div>
+  {filteredVips.length === 0 && <div className="desktop-empty-inline">当前筛选条件下暂无会员记录。</div>}
     </section>
   );
 }

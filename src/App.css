@@ -621,6 +621,29 @@ input, select, textarea { font-family: inherit; }
 
 .desktop-panel {
   padding: 22px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.desktop-panel > .vip-summary-grid,
+.desktop-panel > .wish-summary-grid,
+.desktop-panel > .vip-toolbar,
+.desktop-panel > .wish-toolbar,
+.desktop-panel > .wish-form-card,
+.desktop-panel > .vip-form-card,
+.desktop-panel > .desktop-panel-head,
+.desktop-panel > .notice,
+.desktop-panel > div:has(> .form-select) {
+  flex-shrink: 0;
+}
+
+.desktop-panel > .vip-board-grid-container,
+.desktop-panel > .wish-board-grid-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .desktop-overview-tools {
@@ -3801,4 +3824,196 @@ input, select, textarea { font-family: inherit; }
 .wish-mobile-shell,
 .vip-mobile-shell {
   background: transparent;
+}
+
+/* VIP Library Desktop Styles - 每行4个卡片 */
+.vip-board-grid-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(100vh - 420px);
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200, 75, 49, 0.42) rgba(120, 85, 60, 0.08);
+}
+
+.vip-board-grid-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.vip-board-grid-container::-webkit-scrollbar-track {
+  background: rgba(120, 85, 60, 0.08);
+  border-radius: 999px;
+}
+
+.vip-board-grid-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(200, 75, 49, 0.52), rgba(200, 75, 49, 0.34));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.vip-board-grid-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(214, 94, 68, 0.68), rgba(200, 75, 49, 0.46));
+  background-clip: padding-box;
+}
+
+:root[data-theme='dark'] .vip-board-grid-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(255, 138, 101, 0.72), rgba(255, 112, 67, 0.48));
+  background-clip: padding-box;
+}
+
+:root[data-theme='dark'] .vip-board-grid-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(255, 171, 145, 0.82), rgba(255, 138, 101, 0.58));
+  background-clip: padding-box;
+}
+
+/* 修改 vip-grid 为4列布局 */
+.vip-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* VIP 响应式调整 */
+@media (max-width: 1400px) {
+  .vip-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .vip-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .vip-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Wish Board Desktop Styles - 每行4个卡片 */
+.wish-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.wish-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  margin-bottom: 16px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 12px 16px;
+}
+
+.wish-filter-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.wish-filter-row::-webkit-scrollbar {
+  display: none;
+}
+
+.wish-search-wrap {
+  flex: 0 0 auto;
+  min-width: 200px;
+  width: 260px;
+}
+
+.wish-search-input {
+  width: 100% !important;
+  padding: 10px 14px !important;
+}
+
+.wish-board-grid-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200, 75, 49, 0.42) rgba(120, 85, 60, 0.08);
+}
+
+.wish-board-grid-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.wish-board-grid-container::-webkit-scrollbar-track {
+  background: rgba(120, 85, 60, 0.08);
+  border-radius: 999px;
+}
+
+.wish-board-grid-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(200, 75, 49, 0.52), rgba(200, 75, 49, 0.34));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.wish-board-grid-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(214, 94, 68, 0.68), rgba(200, 75, 49, 0.46));
+  background-clip: padding-box;
+}
+
+:root[data-theme='dark'] .wish-board-grid-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(255, 138, 101, 0.72), rgba(255, 112, 67, 0.48));
+  background-clip: padding-box;
+}
+
+:root[data-theme='dark'] .wish-board-grid-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(255, 171, 145, 0.82), rgba(255, 138, 101, 0.58));
+  background-clip: padding-box;
+}
+
+.wish-board-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* Flex layout for VIP and Wish Board panels to enable scrolling */
+.desktop-panel > section:has(> .vip-board-grid-container),
+.desktop-panel > section:has(> .wish-board-grid-container) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* 心愿墙响应式调整 */
+@media (max-width: 1400px) {
+  .wish-board-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .wish-board-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .wish-board-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .wish-toolbar {
+    flex-wrap: wrap;
+  }
+  
+  .wish-search-wrap {
+    width: 100%;
+  }
 }
