@@ -613,6 +613,8 @@ input, select, textarea { font-family: inherit; }
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   gap: 18px;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 
 .desktop-content-grid-bottom {
@@ -624,7 +626,7 @@ input, select, textarea { font-family: inherit; }
   display: flex;
   flex-direction: column;
   min-height: 0;
-  height: 100%;
+  /* height: 100%; */
 }
 
 .desktop-panel > .vip-summary-grid,
@@ -718,10 +720,10 @@ input, select, textarea { font-family: inherit; }
   border-bottom: 1px solid var(--border);
 }
 
-.desktop-list-row:last-child,
+/* .desktop-list-row:last-child,
 .desktop-category-row:last-child {
   border-bottom: none;
-}
+} */
 
 .desktop-list-row {
   display: flex;
@@ -1054,7 +1056,7 @@ input, select, textarea { font-family: inherit; }
 }
 
 .desktop-overview-tools {
-  padding: 12px 14px;
+  padding: 40px 14px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 86%, transparent), var(--bg));
 }
 
@@ -1365,6 +1367,22 @@ input, select, textarea { font-family: inherit; }
 
 .desktop-overview-panel-compact {
   padding: 16px 18px !important;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.desktop-overview-panel-compact .desktop-panel-title {
+  flex-shrink: 0;
+}
+
+.desktop-overview-panel-compact .desktop-category-list,
+.desktop-overview-panel-compact .desktop-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
 }
 
 .desktop-overview-summary-grid .desktop-panel,
@@ -1405,22 +1423,22 @@ input, select, textarea { font-family: inherit; }
 }
 
 .desktop-list-row {
-  padding: 16px 12px;
+  padding: 15px 12px;
   border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--surface);
 }
 
 .desktop-list-name {
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .desktop-list-meta {
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .desktop-list-price {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .desktop-list-row + .desktop-list-row {
@@ -1432,15 +1450,16 @@ input, select, textarea { font-family: inherit; }
 }
 
 .desktop-category-row {
-  padding: 10px 12px;
+  padding: 20px 12px;
   border-radius: 12px;
   background: var(--surface);
   border: 1px solid var(--border);
+  margin-bottom: 10px;
 }
 
 .desktop-category-head {
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .desktop-category-track {
@@ -2216,7 +2235,7 @@ input, select, textarea { font-family: inherit; }
 }
 .form-label .required { color: var(--accent); }
 .form-input, .form-select, .form-textarea {
-  width: 90%;
+  width: 100%;
   padding: 11px 13px;
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--border);
@@ -3578,7 +3597,7 @@ input, select, textarea { font-family: inherit; }
 .vip-summary-card span,
 .wish-summary-card span {
   display: block;
-  font-size: 12px;
+  font-size: 15px;
   color: var(--ink-3);
 }
 
