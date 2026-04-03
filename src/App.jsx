@@ -42,6 +42,8 @@ function AppContent() {
   const [desktopOverviewCategory, setDesktopOverviewCategory] = useState("全部");
   const [desktopOverviewSort, setDesktopOverviewSort] = useState("date_desc");
   const [desktopOverviewStatus, setDesktopOverviewStatus] = useState("all");
+  const [desktopOverviewDisplayMode, setDesktopOverviewDisplayMode] = useState("category"); // "category" 或 "channel"
+  const [desktopOverviewselectedDistribution, setDesktopOverviewSelectedDistribution] = useState(null); // 选中的分类或渠道
   const [desktopItemFormOpen, setDesktopItemFormOpen] = useState(false);
   const [desktopSidebarExpanded, setDesktopSidebarExpanded] = useState(true);
   const [desktopItemsSearch, setDesktopItemsSearch] = useState("");
@@ -824,49 +826,143 @@ function AppContent() {
                       </button>
                     </div>
                   </div>
+
+                  <div className="desktop-toolbar-field desktop-toolbar-field-wide">
+                    <label className="desktop-toolbar-label">功能切换</label>
+                    <div className="desktop-segmented">
+                      <button
+                        className={`desktop-segmented-btn ${desktopOverviewDisplayMode === "category" ? "active" : ""}`}
+                        onClick={() => {
+                          setDesktopOverviewDisplayMode("category");
+                          setDesktopOverviewSelectedDistribution(null);
+                        }}
+                      >
+                        分类展示
+                      </button>
+                      <button
+                        className={`desktop-segmented-btn ${desktopOverviewDisplayMode === "channel" ? "active" : ""}`}
+                        onClick={() => {
+                          setDesktopOverviewDisplayMode("channel");
+                          setDesktopOverviewSelectedDistribution(null);
+                        }}
+                      >
+                        渠道展示
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </section>
 
               <section className="desktop-content-grid">
                 <article className="desktop-panel desktop-overview-panel-compact">
-                  <div className="desktop-panel-title">分类分布</div>
+                  <div className="desktop-panel-title">
+                    {desktopOverviewDisplayMode === "category" ? "分类分布" : "渠道分布"}
+                  </div>
                   <div className="desktop-category-list">
-                    {(desktopOverviewItems.length ? Object.entries(desktopOverviewItems.reduce((acc, item) => {
-                      const key = item.category || "未分类";
-                      acc[key] = (acc[key] || 0) + Number(item.price || 0);
-                      return acc;
-                    }, {})) : topCategories)
-                      .sort((a, b) => b[1] - a[1])
-                      .slice(0, 5)
-                      .map(([category, value]) => (
-                      <div className="desktop-category-row" key={category}>
-                        <div className="desktop-category-head">
-                          <span>{category}</span>
-                          <span>¥{value.toFixed(2)}</span>
+                    {desktopOverviewDisplayMode === "category" ? (
+                      // 分类展示模式
+                      (desktopOverviewItems.length ? Object.entries(desktopOverviewItems.reduce((acc, item) => {
+                        const key = item.category || "未分类";
+                        acc[key] = (acc[key] || 0) + Number(item.price || 0);
+                        return acc;
+                      }, {})) : topCategories)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 5)
+                        .map(([category, value]) => (
+                        <div
+                          className={`desktop-category-row ${desktopOverviewselectedDistribution === category && desktopOverviewDisplayMode === "category" ? "selected" : ""}`}
+                          key={category}
+                          onClick={() => setDesktopOverviewSelectedDistribution(
+                            desktopOverviewselectedDistribution === category ? null : category
+                          )}
+                          style={{ cursor: "pointer" }}
+                        >
+                          <div className="desktop-category-head">
+                            <span>{category}</span>
+                            <span>¥{value.toFixed(2)}</span>
+                          </div>
+                          <div className="desktop-category-track">
+                            <div
+                              className="desktop-category-fill"
+                              style={{ width: `${desktopOverviewSpend ? (value / desktopOverviewSpend) * 100 : totalValue ? (value / totalValue) * 100 : 0}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="desktop-category-track">
-                          <div
-                            className="desktop-category-fill"
-                            style={{ width: `${desktopOverviewSpend ? (value / desktopOverviewSpend) * 100 : totalValue ? (value / totalValue) * 100 : 0}%` }}
-                          />
+                      ))
+                    ) : (
+                      // 渠道展示模式
+                      Object.entries(desktopOverviewItems.reduce((acc, item) => {
+                        const key = item.purchaseChannel || "未填写";
+                        acc[key] = (acc[key] || 0) + Number(item.price || 0);
+                        return acc;
+                      }, {}))
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 5)
+                        .map(([channel, value]) => (
+                        <div
+                          className={`desktop-category-row ${desktopOverviewselectedDistribution === channel && desktopOverviewDisplayMode === "channel" ? "selected" : ""}`}
+                          key={channel}
+                          onClick={() => setDesktopOverviewSelectedDistribution(
+                            desktopOverviewselectedDistribution === channel ? null : channel
+                          )}
+                          style={{ cursor: "pointer" }}
+                        >
+                          <div className="desktop-category-head">
+                            <span>{channel}</span>
+                            <span>¥{value.toFixed(2)}</span>
+                          </div>
+                          <div className="desktop-category-track">
+                            <div
+                              className="desktop-category-fill"
+                              style={{ width: `${desktopOverviewSpend ? (value / desktopOverviewSpend) * 100 : totalValue ? (value / totalValue) * 100 : 0}%` }}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </article>
 
                 <article className="desktop-panel desktop-overview-panel-compact">
-                  <div className="desktop-panel-title">{desktopOverviewListConfig.title}</div>
+                  <div className="desktop-panel-title">
+                    {desktopOverviewselectedDistribution
+                      ? `${desktopOverviewselectedDistribution} 产品`
+                      : desktopOverviewListConfig.title}
+                  </div>
                   <div className="desktop-list">
-                    {desktopOverviewListItems.map((item) => (
-                      <div className="desktop-list-row" key={item.id}>
+                    {(desktopOverviewselectedDistribution
+                      ? desktopOverviewItems.filter(item =>
+                          desktopOverviewDisplayMode === "category"
+                            ? (item.category || "未分类") === desktopOverviewselectedDistribution
+                            : (item.purchaseChannel || "未填写") === desktopOverviewselectedDistribution
+                        )
+                      : desktopOverviewListItems
+                    ).map((item) => (
+                      <div
+                        className="desktop-list-row"
+                        key={item.id}
+                        onClick={() => openDesktopDetail(item, "overview")}
+                        style={{ cursor: "pointer" }}
+                      >
                         <div>
                           <div className="desktop-list-name">{item.name}</div>
-                          <div className="desktop-list-meta">{desktopOverviewListConfig.meta(item)}</div>
+                          <div className="desktop-list-meta">
+                            {desktopOverviewselectedDistribution
+                              ? `${item.category || "未分类"} · ${item.purchaseChannel || "未填写渠道"}`
+                              : desktopOverviewListConfig.meta(item)}
+                          </div>
                         </div>
                         <div className="desktop-list-price">¥{Number(item.price || 0).toFixed(2)}</div>
                       </div>
                     ))}
+                    {desktopOverviewselectedDistribution && 
+                     desktopOverviewItems.filter(item =>
+                        desktopOverviewDisplayMode === "category"
+                          ? (item.category || "未分类") === desktopOverviewselectedDistribution
+                          : (item.purchaseChannel || "未填写") === desktopOverviewselectedDistribution
+                      ).length === 0 && (
+                      <div className="desktop-empty-inline">暂无相关产品</div>
+                    )}
                   </div>
                 </article>
               </section>
