@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useItems } from "../context/ItemContext";
 import { CATEGORIES, CATEGORY_ICONS } from "../utils/calc";
+import { AlertDialog, ConfirmDialog } from "./CustomDialog";
 
 export default function WishBoardPanel({ mobile = false }) {
   const { wishes, addWish, deleteWish, loading, error } = useItems();
@@ -15,6 +16,33 @@ export default function WishBoardPanel({ mobile = false }) {
     purpose: "",
     note: "",
   });
+
+  // 对话框状态
+  const [dialogState, setDialogState] = useState({
+    isOpen: false,
+    type: 'alert',
+    title: '提示',
+    message: '',
+    onConfirm: null,
+    onCancel: null,
+    danger: false,
+  });
+
+  const showDialog = useCallback((config) => {
+    setDialogState({
+      isOpen: true,
+      type: config.type || 'alert',
+      title: config.title || '提示',
+      message: config.message || '',
+      onConfirm: config.onConfirm || null,
+      onCancel: config.onCancel || null,
+      danger: config.danger || false,
+    });
+  }, []);
+
+  const hideDialog = useCallback(() => {
+    setDialogState((prev) => ({ ...prev, isOpen: false }));
+  }, []);
 
   const wishSummary = useMemo(() => {
     const totalBudget = wishes.reduce((sum, wish) => sum + Number(wish.targetPrice || 0), 0);
@@ -44,7 +72,11 @@ export default function WishBoardPanel({ mobile = false }) {
 
   const handleAdd = async () => {
     if (!form.name.trim() || !form.targetPrice) {
-      alert("请填写物品名称和目标价格");
+      showDialog({
+        type: 'alert',
+        title: '提示',
+        message: '请填写物品名称和目标价格',
+      });
       return;
     }
     try {
@@ -63,7 +95,11 @@ export default function WishBoardPanel({ mobile = false }) {
       });
       setShowForm(false);
     } catch (requestError) {
-      alert(requestError.message || "添加心愿失败");
+      showDialog({
+        type: 'alert',
+        title: '错误',
+        message: requestError.message || "添加心愿失败",
+      });
     }
   };
 
@@ -182,11 +218,23 @@ export default function WishBoardPanel({ mobile = false }) {
                 <button
                   className="desktop-action-btn danger"
                   onClick={async () => {
-                    try {
-                      await deleteWish(wish.id);
-                    } catch (requestError) {
-                      alert(requestError.message || "删除心愿失败");
-                    }
+                    showDialog({
+                      type: 'confirm',
+                      title: '确认删除',
+                      message: `确定删除「${wish.name}」吗？`,
+                      danger: true,
+                      onConfirm: async () => {
+                        try {
+                          await deleteWish(wish.id);
+                        } catch (requestError) {
+                          showDialog({
+                            type: 'alert',
+                            title: '错误',
+                            message: requestError.message || "删除心愿失败",
+                          });
+                        }
+                      },
+                    });
                   }}
                 >
                   删除
@@ -216,6 +264,36 @@ export default function WishBoardPanel({ mobile = false }) {
           <div className="empty-title">心愿墙是空的</div>
           <div className="empty-desc">添加想买的物品与用途，慢慢把短期目标一项项实现。</div>
         </div>
+      )}
+
+      {/* 自定义对话框 */}
+      {dialogState.isOpen && dialogState.type === 'alert' && (
+        <AlertDialog
+          isOpen={dialogState.isOpen}
+          title={dialogState.title}
+          message={dialogState.message}
+          onConfirm={() => {
+            hideDialog();
+            dialogState.onConfirm?.();
+          }}
+        />
+      )}
+
+      {dialogState.isOpen && dialogState.type === 'confirm' && (
+        <ConfirmDialog
+          isOpen={dialogState.isOpen}
+          title={dialogState.title}
+          message={dialogState.message}
+          danger={dialogState.danger}
+          onConfirm={() => {
+            hideDialog();
+            dialogState.onConfirm?.();
+          }}
+          onCancel={() => {
+            hideDialog();
+            dialogState.onCancel?.();
+          }}
+        />
       )}
     </section>
   );

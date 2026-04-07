@@ -90,7 +90,7 @@ const CREATE_VIP_MEMBERSHIPS_TABLE_SQL = `
     note TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT vip_memberships_status_check CHECK (status IN ('active', 'expiring', 'expired', 'paused')),
+    CONSTRAINT vip_memberships_status_check CHECK (status IN ('active', 'expiring', 'expired', 'urgent')),
     CONSTRAINT vip_memberships_remind_before_days_check CHECK (remind_before_days >= 0)
   );
 `;

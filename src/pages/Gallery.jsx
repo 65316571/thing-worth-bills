@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useItems } from "../context/ItemContext";
 import { api } from "../utils/api";
+import { AlertDialog, ConfirmDialog } from "../components/CustomDialog";
 
 const TYPES = [
   { value: "product_image", label: "商品照片" },
@@ -26,6 +27,33 @@ export default function Gallery() {
   const [expandedAssetId, setExpandedAssetId] = useState(null);
   const [draftTitles, setDraftTitles] = useState({});
   const [replacingAssetId, setReplacingAssetId] = useState(null);
+
+  // 对话框状态
+  const [dialogState, setDialogState] = useState({
+    isOpen: false,
+    type: 'alert',
+    title: '提示',
+    message: '',
+    onConfirm: null,
+    onCancel: null,
+    danger: false,
+  });
+
+  const showDialog = useCallback((config) => {
+    setDialogState({
+      isOpen: true,
+      type: config.type || 'alert',
+      title: config.title || '提示',
+      message: config.message || '',
+      onConfirm: config.onConfirm || null,
+      onCancel: config.onCancel || null,
+      danger: config.danger || false,
+    });
+  }, []);
+
+  const hideDialog = useCallback(() => {
+    setDialogState((prev) => ({ ...prev, isOpen: false }));
+  }, []);
 
   useEffect(() => {
     api.getAssets({
@@ -84,7 +112,11 @@ export default function Gallery() {
       const updated = await updateAsset(asset.id, { url, ...(nextTitle ? { title: nextTitle } : {}) });
       setAssets((prev) => prev.map((a) => (a.id === asset.id ? { ...a, ...updated } : a)));
     } catch (err) {
-      alert(err.message || "更换图片失败");
+      showDialog({
+        type: 'alert',
+        title: '错误',
+        message: err.message || "更换图片失败",
+      });
     } finally {
       setReplacingAssetId(null);
     }
@@ -105,7 +137,11 @@ export default function Gallery() {
       setAssets((prev) => [{ ...created, itemName: (items.find((i) => i.id === Number(uploadItemId)) || {}).name }, ...prev]);
       setUploadOpen(false);
     } catch (err) {
-      alert(err.message || "上传失败");
+      showDialog({
+        type: 'alert',
+        title: '错误',
+        message: err.message || "上传失败",
+      });
     } finally {
       setUploading(false);
     }
@@ -241,6 +277,36 @@ export default function Gallery() {
         <button className="image-lightbox" type="button" onClick={() => setPreviewAsset(null)}>
           <img className="image-lightbox-preview" src={previewAsset.url} alt={previewAsset.title || "图片预览"} />
         </button>
+      )}
+
+      {/* 自定义对话框 */}
+      {dialogState.isOpen && dialogState.type === 'alert' && (
+        <AlertDialog
+          isOpen={dialogState.isOpen}
+          title={dialogState.title}
+          message={dialogState.message}
+          onConfirm={() => {
+            hideDialog();
+            dialogState.onConfirm?.();
+          }}
+        />
+      )}
+
+      {dialogState.isOpen && dialogState.type === 'confirm' && (
+        <ConfirmDialog
+          isOpen={dialogState.isOpen}
+          title={dialogState.title}
+          message={dialogState.message}
+          danger={dialogState.danger}
+          onConfirm={() => {
+            hideDialog();
+            dialogState.onConfirm?.();
+          }}
+          onCancel={() => {
+            hideDialog();
+            dialogState.onCancel?.();
+          }}
+        />
       )}
     </div>
   );

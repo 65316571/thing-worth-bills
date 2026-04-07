@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import ItemList from "./pages/ItemList";
 import AddItem from "./pages/AddItem";
 import ItemDetail from "./pages/ItemDetail";
@@ -12,6 +12,7 @@ import { ItemProvider } from "./context/ItemContext";
 import { useItems } from "./context/ItemContext";
 import { CATEGORIES, SORT_OPTIONS, calcDays, calcDailyCost, formatUsageDuration } from "./utils/calc";
 import { api } from "./utils/api";
+import { AlertDialog, ConfirmDialog, useDialog } from "./components/CustomDialog";
 import "./App.css";
 
 const DESKTOP_ALL_CATS = ["全部", ...CATEGORIES, "未分类"];
@@ -25,6 +26,33 @@ export default function App() {
 }
 
 function AppContent() {
+  // 对话框状态管理
+  const [dialogState, setDialogState] = useState({
+    isOpen: false,
+    type: 'alert', // 'alert' | 'confirm'
+    title: '提示',
+    message: '',
+    onConfirm: null,
+    onCancel: null,
+    danger: false,
+  });
+
+  const showDialog = useCallback((config) => {
+    setDialogState({
+      isOpen: true,
+      type: config.type || 'alert',
+      title: config.title || '提示',
+      message: config.message || '',
+      onConfirm: config.onConfirm || null,
+      onCancel: config.onCancel || null,
+      danger: config.danger || false,
+    });
+  }, []);
+
+  const hideDialog = useCallback(() => {
+    setDialogState((prev) => ({ ...prev, isOpen: false }));
+  }, []);
+
   const [mode, setMode] = useState("chooser");
   const [theme, setTheme] = useState(() => {
     if (typeof window === "undefined") {
@@ -464,10 +492,40 @@ function AppContent() {
               <span>适合桌面大屏浏览，信息更集中，适合总览和管理。</span>
             </button>
           </div>
-        </div>
       </div>
-    );
-  }
+
+      {/* 自定义对话框组件 */}
+      {dialogState.isOpen && dialogState.type === 'alert' && (
+        <AlertDialog
+          isOpen={dialogState.isOpen}
+          title={dialogState.title}
+          message={dialogState.message}
+          onConfirm={() => {
+            hideDialog();
+            dialogState.onConfirm?.();
+          }}
+        />
+      )}
+
+      {dialogState.isOpen && dialogState.type === 'confirm' && (
+        <ConfirmDialog
+          isOpen={dialogState.isOpen}
+          title={dialogState.title}
+          message={dialogState.message}
+          danger={dialogState.danger}
+          onConfirm={() => {
+            hideDialog();
+            dialogState.onConfirm?.();
+          }}
+          onCancel={() => {
+            hideDialog();
+            dialogState.onCancel?.();
+          }}
+        />
+      )}
+    </div>
+  );
+}
 
   if (mode === "desktop") {
     return (
@@ -926,7 +984,7 @@ function AppContent() {
                 <article className="desktop-panel desktop-overview-panel-compact">
                   <div className="desktop-panel-title">
                     {desktopOverviewselectedDistribution
-                      ? `${desktopOverviewselectedDistribution} 产品`
+                      ? `${desktopOverviewselectedDistribution} 相关物品`
                       : desktopOverviewListConfig.title}
                   </div>
                   <div className="desktop-list">
@@ -947,9 +1005,7 @@ function AppContent() {
                         <div>
                           <div className="desktop-list-name">{item.name}</div>
                           <div className="desktop-list-meta">
-                            {desktopOverviewselectedDistribution
-                              ? `${item.category || "未分类"} · ${item.purchaseChannel || "未填写渠道"}`
-                              : desktopOverviewListConfig.meta(item)}
+                            {desktopOverviewListConfig.meta(item)}
                           </div>
                         </div>
                         <div className="desktop-list-price">¥{Number(item.price || 0).toFixed(2)}</div>

@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useItems } from "../context/ItemContext";
+import { AlertDialog, ConfirmDialog } from "./CustomDialog";
 
 function formatDateOnly(value) {
   if (!value) {
@@ -95,6 +96,33 @@ export default function VipLibraryPanel({ mobile = false }) {
     note: "",
   });
 
+  // 对话框状态
+  const [dialogState, setDialogState] = useState({
+    isOpen: false,
+    type: 'alert',
+    title: '提示',
+    message: '',
+    onConfirm: null,
+    onCancel: null,
+    danger: false,
+  });
+
+  const showDialog = useCallback((config) => {
+    setDialogState({
+      isOpen: true,
+      type: config.type || 'alert',
+      title: config.title || '提示',
+      message: config.message || '',
+      onConfirm: config.onConfirm || null,
+      onCancel: config.onCancel || null,
+      danger: config.danger || false,
+    });
+  }, []);
+
+  const hideDialog = useCallback(() => {
+    setDialogState((prev) => ({ ...prev, isOpen: false }));
+  }, []);
+
   const cycleOptions = [
     { value: "yearly", label: "年度" },
     { value: "quarterly", label: "季度" },
@@ -174,12 +202,20 @@ export default function VipLibraryPanel({ mobile = false }) {
 
   const handleAddVip = async () => {
     if (!form.name.trim() || !form.website.trim() || !form.expireAt) {
-      alert("请至少填写会员名称、网址和到期时间；如果免费会员，金额可填 0");
+      showDialog({
+        type: 'alert',
+        title: '提示',
+        message: '请至少填写会员名称、网址和到期时间；如果免费会员，金额可填 0',
+      });
       return;
     }
 
     if (form.price === "") {
-      alert("请填写花费金额，免费会员请填写 0");
+      showDialog({
+        type: 'alert',
+        title: '提示',
+        message: '请填写花费金额，免费会员请填写 0',
+      });
       return;
     }
 
@@ -207,7 +243,11 @@ export default function VipLibraryPanel({ mobile = false }) {
       resetForm();
       setShowForm(false);
     } catch (requestError) {
-      alert(requestError.message || `${editingId ? "修改" : "保存"}会员失败`);
+      showDialog({
+        type: 'alert',
+        title: '错误',
+        message: requestError.message || `${editingId ? "修改" : "保存"}会员失败`,
+      });
     }
   };
 
@@ -229,15 +269,23 @@ export default function VipLibraryPanel({ mobile = false }) {
   };
 
   const handleDeleteVip = async (vip) => {
-    if (!window.confirm(`确定删除会员「${vip.name}」吗？`)) {
-      return;
-    }
-
-    try {
-      await deleteVipMembership(vip.id);
-    } catch (requestError) {
-      alert(requestError.message || "删除会员失败");
-    }
+    showDialog({
+      type: 'confirm',
+      title: '确认删除',
+      message: `确定删除会员「${vip.name}」吗？`,
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await deleteVipMembership(vip.id);
+        } catch (requestError) {
+          showDialog({
+            type: 'alert',
+            title: '错误',
+            message: requestError.message || "删除会员失败",
+          });
+        }
+      },
+    });
   };
 
   return (
@@ -440,10 +488,39 @@ export default function VipLibraryPanel({ mobile = false }) {
             </article>
           );
         })}
+        {filteredVips.length === 0 && <div className="desktop-empty-inline">当前筛选条件下暂无会员记录。</div>}
+      </div>
       </div>
 
-  </div>
-  {filteredVips.length === 0 && <div className="desktop-empty-inline">当前筛选条件下暂无会员记录。</div>}
+      {/* 自定义对话框 */}
+      {dialogState.isOpen && dialogState.type === 'alert' && (
+        <AlertDialog
+          isOpen={dialogState.isOpen}
+          title={dialogState.title}
+          message={dialogState.message}
+          onConfirm={() => {
+            hideDialog();
+            dialogState.onConfirm?.();
+          }}
+        />
+      )}
+
+      {dialogState.isOpen && dialogState.type === 'confirm' && (
+        <ConfirmDialog
+          isOpen={dialogState.isOpen}
+          title={dialogState.title}
+          message={dialogState.message}
+          danger={dialogState.danger}
+          onConfirm={() => {
+            hideDialog();
+            dialogState.onConfirm?.();
+          }}
+          onCancel={() => {
+            hideDialog();
+            dialogState.onCancel?.();
+          }}
+        />
+      )}
     </section>
   );
 }

@@ -107,19 +107,20 @@ export const api = {
     return request(`/api/assets${qs ? `?${qs}` : ""}`);
   },
   getWishes() {
-    return request("/api/wish-board-items");
+    return request("/api/wishes");
   },
   createWish(payload) {
-    return request("/api/wish-board-items", {
+    return request("/api/wishes", {
       method: "POST",
       body: JSON.stringify(payload),
     });
   },
   deleteWish(id) {
-    return request(`/api/wish-board-items/${id}`, {
+    return request(`/api/wishes/${id}`, {
       method: "DELETE",
     });
   },
+  // VIP 会员库 API
   getVipMemberships() {
     return request("/api/vip-memberships");
   },

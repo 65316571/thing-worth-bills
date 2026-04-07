@@ -1,13 +1,41 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useItems } from "../context/ItemContext";
 import { calcDays, calcDailyCost } from "../utils/calc";
 import VipLibraryPanel from "../components/VipLibraryPanel";
+import { AlertDialog, ConfirmDialog } from "../components/CustomDialog";
 
 export default function Data({ navigate }) {
   const { items, deleteItem, deactivateItem, reactivateItem } = useItems();
   const [search, setSearch] = useState("");
   const [expandedItemId, setExpandedItemId] = useState(null);
   const [tab, setTab] = useState("items");
+  
+  // 对话框状态
+  const [dialogState, setDialogState] = useState({
+    isOpen: false,
+    type: 'alert',
+    title: '提示',
+    message: '',
+    onConfirm: null,
+    onCancel: null,
+    danger: false,
+  });
+
+  const showDialog = useCallback((config) => {
+    setDialogState({
+      isOpen: true,
+      type: config.type || 'alert',
+      title: config.title || '提示',
+      message: config.message || '',
+      onConfirm: config.onConfirm || null,
+      onCancel: config.onCancel || null,
+      danger: config.danger || false,
+    });
+  }, []);
+
+  const hideDialog = useCallback(() => {
+    setDialogState((prev) => ({ ...prev, isOpen: false }));
+  }, []);
 
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -29,23 +57,44 @@ export default function Data({ navigate }) {
   }, [items, search]);
 
   const handleDelete = async (item) => {
-    if (!window.confirm(`确定删除「${item.name}」吗？`)) return;
-    try {
-      await deleteItem(item.id);
-    } catch (error) {
-      alert(error.message || "删除物品失败");
-    }
+    showDialog({
+      type: 'confirm',
+      title: '确认删除',
+      message: `确定删除「${item.name}」吗？`,
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await deleteItem(item.id);
+        } catch (error) {
+          showDialog({
+            type: 'alert',
+            title: '错误',
+            message: error.message || "删除物品失败",
+          });
+        }
+      },
+    });
   };
 
   const handleToggleStatus = async (item) => {
     const nextAction = item.status === "active" ? "停用" : "启用";
-    if (!window.confirm(`确定${nextAction}「${item.name}」吗？`)) return;
-    try {
-      if (item.status === "active") await deactivateItem(item.id);
-      else await reactivateItem(item.id);
-    } catch (error) {
-      alert(error.message || `${nextAction}物品失败`);
-    }
+    showDialog({
+      type: 'confirm',
+      title: '确认',
+      message: `确定${nextAction}「${item.name}」吗？`,
+      onConfirm: async () => {
+        try {
+          if (item.status === "active") await deactivateItem(item.id);
+          else await reactivateItem(item.id);
+        } catch (error) {
+          showDialog({
+            type: 'alert',
+            title: '错误',
+            message: error.message || `${nextAction}物品失败`,
+          });
+        }
+      },
+    });
   };
 
   return (
@@ -139,6 +188,36 @@ export default function Data({ navigate }) {
         </div>
         )}
       </div>
+
+      {/* 自定义对话框 */}
+      {dialogState.isOpen && dialogState.type === 'alert' && (
+        <AlertDialog
+          isOpen={dialogState.isOpen}
+          title={dialogState.title}
+          message={dialogState.message}
+          onConfirm={() => {
+            hideDialog();
+            dialogState.onConfirm?.();
+          }}
+        />
+      )}
+
+      {dialogState.isOpen && dialogState.type === 'confirm' && (
+        <ConfirmDialog
+          isOpen={dialogState.isOpen}
+          title={dialogState.title}
+          message={dialogState.message}
+          danger={dialogState.danger}
+          onConfirm={() => {
+            hideDialog();
+            dialogState.onConfirm?.();
+          }}
+          onCancel={() => {
+            hideDialog();
+            dialogState.onCancel?.();
+          }}
+        />
+      )}
     </div>
   );
 }
