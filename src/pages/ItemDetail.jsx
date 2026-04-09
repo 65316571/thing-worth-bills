@@ -195,52 +195,41 @@ export default function ItemDetail({ item, navigate, backTarget = "list" }) {
                     </div>
                   </div>
                   
-                  {/* 图片展示区 - 600px高度 */}
+                  {/* 图片展示区 - 450px高度 */}
                   <div className="image-viewer-display">
                     <div 
                       className="image-viewer-img-wrap"
-                      onClick={(e) => {
-                        // 点击中间区域放大
-                        const bounds = e.currentTarget.getBoundingClientRect();
-                        const x = e.clientX - bounds.left;
-                        if (x >= bounds.width / 3 && x <= (bounds.width * 2) / 3) {
-                          setPreviewAsset({
-                            assets: allImageAssets,
-                            index: viewerIndex,
-                            label: "图片",
-                          });
-                        }
+                      onClick={() => {
+                        setPreviewAsset({
+                          assets: allImageAssets,
+                          index: viewerIndex,
+                          label: "图片",
+                        });
                       }}
+                      title="点击放大查看"
                     >
                       <img 
                         className="image-viewer-img" 
                         src={viewerCurrent?.url} 
                         alt={viewerCurrent?.title || "图片"}
-                        title="点击中间区域放大查看"
                       />
                     </div>
                     
-                    {/* 左右翻页按钮 */}
-                    {viewerCount > 1 && (
-                      <>
-                        <button
-                          className="viewer-nav-btn viewer-nav-prev"
-                          onClick={() => changeGroupIndex("all", viewerCount, -1)}
-                          disabled={viewerIndex === 0}
-                          title="上一张"
-                        >
-                          ‹
-                        </button>
-                        <button
-                          className="viewer-nav-btn viewer-nav-next"
-                          onClick={() => changeGroupIndex("all", viewerCount, 1)}
-                          disabled={viewerIndex === viewerCount - 1}
-                          title="下一张"
-                        >
-                          ›
-                        </button>
-                      </>
-                    )}
+                    {/* 左右翻页按钮 - 循环翻页 */}
+                    <button
+                      className="viewer-nav-btn viewer-nav-prev"
+                      onClick={() => changeGroupIndex("all", viewerCount, -1)}
+                      title="上一张"
+                    >
+                      ‹
+                    </button>
+                    <button
+                      className="viewer-nav-btn viewer-nav-next"
+                      onClick={() => changeGroupIndex("all", viewerCount, 1)}
+                      title="下一张"
+                    >
+                      ›
+                    </button>
                   </div>
                   
                   {/* 底部提示 */}
@@ -292,9 +281,11 @@ export default function ItemDetail({ item, navigate, backTarget = "list" }) {
         </div>
       </div>
 
+      {/* 图片放大灯箱 */}
       {previewAsset && (
-        <div className="image-lightbox">
+        <div className="image-lightbox" onClick={() => setPreviewAsset(null)}>
           <div className="image-lightbox-body" onClick={(e) => e.stopPropagation()}>
+            {/* 顶部信息栏 */}
             <div className="image-lightbox-top">
               <div className="image-lightbox-meta">
                 <div className="gallery-chip">{TYPE_LABELS[previewAsset.assets[previewAsset.index].type] || "图片"}</div>
@@ -302,31 +293,52 @@ export default function ItemDetail({ item, navigate, backTarget = "list" }) {
               </div>
               <button className="image-lightbox-close" onClick={() => setPreviewAsset(null)} title="关闭">✖</button>
             </div>
-            <button
-              className="image-lightbox-image-btn"
-              type="button"
-              onClick={(event) => {
-                const bounds = event.currentTarget.getBoundingClientRect();
-                const x = event.clientX - bounds.left;
-                setPreviewAsset((prev) => ({
-                  ...prev,
-                  index:
-                    x < bounds.width / 3
-                      ? (prev.index - 1 + prev.assets.length) % prev.assets.length
-                      : x > (bounds.width * 2) / 3
-                        ? (prev.index + 1) % prev.assets.length
-                        : prev.index,
-                }));
-              }}
-              title="点击左右切换"
-            >
+            
+            {/* 图片展示区 - 带左右翻页（循环） */}
+            <div className="image-lightbox-display">
+              {/* 左翻页按钮 - 循环翻页 */}
+              <button
+                className="lightbox-nav-btn lightbox-nav-prev"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPreviewAsset((prev) => ({
+                    ...prev,
+                    index: (prev.index - 1 + prev.assets.length) % prev.assets.length,
+                  }));
+                }}
+                title="上一张"
+              >
+                ‹
+              </button>
+              
+              {/* 图片 */}
               <img
                 className="image-lightbox-preview"
-                style={{ maxWidth: "500px", maxHeight: "450px", width: "100%", height: "auto", objectFit: "contain", display: "block" }}
                 src={previewAsset.assets[previewAsset.index].url}
-                alt={previewAsset.assets[previewAsset.index].title || previewAsset.label || "图片预览"}
+                alt={previewAsset.assets[previewAsset.index].title || "图片预览"}
+                onClick={(e) => e.stopPropagation()}
               />
-            </button>
+              
+              {/* 右翻页按钮 - 循环翻页 */}
+              <button
+                className="lightbox-nav-btn lightbox-nav-next"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPreviewAsset((prev) => ({
+                    ...prev,
+                    index: (prev.index + 1) % prev.assets.length,
+                  }));
+                }}
+                title="下一张"
+              >
+                ›
+              </button>
+            </div>
+            
+            {/* 底部提示 */}
+            <div className="image-lightbox-hint">
+              点击左右按钮翻页 · 点击背景关闭
+            </div>
           </div>
         </div>
       )}

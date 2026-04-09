@@ -12,10 +12,15 @@ const TYPE_LABELS = {
 };
 
 export default function AddItem({ navigate, editItem }) {
-  const { addItem, updateItem, deleteItem, deactivateItem, reactivateItem, addItemAsset, deleteItemAsset } = useItems();
+  const { addItem, updateItem, deleteItem, deactivateItem, reactivateItem, addItemAsset, deleteItemAsset, updateItemAsset, updateAsset } = useItems();
   const isEdit = !!editItem;
   const [uploading, setUploading] = useState(false);
   const [imageIndexes, setImageIndexes] = useState({});
+  
+  // 图片编辑状态
+  const [editingImageName, setEditingImageName] = useState(false);
+  const [editingImageType, setEditingImageType] = useState(false);
+  const [tempImageName, setTempImageName] = useState("");
   
   // 对话框状态
   const [dialogState, setDialogState] = useState({
@@ -198,6 +203,54 @@ export default function AddItem({ navigate, editItem }) {
     });
   };
 
+  // 处理图片名称编辑
+  const handleImageNameDoubleClick = () => {
+    if (!viewerCurrent) return;
+    setTempImageName(viewerCurrent.title || "");
+    setEditingImageName(true);
+  };
+
+  const handleImageNameSave = async () => {
+    if (!viewerCurrent || !editItem) return;
+    try {
+      await updateAsset(viewerCurrent.id, { title: tempImageName });
+      // 更新本地状态
+      const updatedAssets = currentAssets.map(a => 
+        a.id === viewerCurrent.id ? { ...a, title: tempImageName } : a
+      );
+      navigate("edit", { ...editItem, assets: updatedAssets });
+    } catch (error) {
+      showDialog({ type: 'alert', title: '错误', message: error.message || "更新失败" });
+    }
+    setEditingImageName(false);
+  };
+
+  const handleImageNameCancel = () => {
+    setEditingImageName(false);
+    setTempImageName("");
+  };
+
+  // 处理图片类型编辑
+  const handleImageTypeClick = () => {
+    if (!viewerCurrent) return;
+    setEditingImageType(true);
+  };
+
+  const handleImageTypeChange = async (newType) => {
+    if (!viewerCurrent || !editItem) return;
+    try {
+      await updateAsset(viewerCurrent.id, { type: newType });
+      // 更新本地状态
+      const updatedAssets = currentAssets.map(a => 
+        a.id === viewerCurrent.id ? { ...a, type: newType } : a
+      );
+      navigate("edit", { ...editItem, assets: updatedAssets });
+    } catch (error) {
+      showDialog({ type: 'alert', title: '错误', message: error.message || "更新失败" });
+    }
+    setEditingImageType(false);
+  };
+
   function getGroupIndex(groupType, count) {
     const idx = imageIndexes[groupType] || 0;
     if (!count) return 0;
@@ -316,17 +369,61 @@ export default function AddItem({ navigate, editItem }) {
                   onChange={(e) => handleUploadImage(e, "product_image")}
                 />
                 
-                {viewerCurrent ? (
-                  <div className="image-viewer-content">
-                    {/* 图片信息栏 */}
+                {/* 图片查看器内容 */}
+                <div className="image-viewer-content">
+                  {/* 图片信息栏 - 可编辑 */}
+                  {viewerCurrent && (
                     <div className="image-viewer-info">
                       <div className="image-viewer-meta">
-                        <span className="image-viewer-name" title={viewerCurrent.title || "未命名"}>
-                          {viewerCurrent.title || "未命名"}
-                        </span>
-                        <span className="image-viewer-type">
-                          {TYPE_LABELS[viewerCurrent.type] || "图片"}
-                        </span>
+                        {/* 图片名称 - 双击编辑 */}
+                        {editingImageName ? (
+                          <div className="image-name-edit">
+                            <input
+                              type="text"
+                              className="image-name-input"
+                              value={tempImageName}
+                              onChange={(e) => setTempImageName(e.target.value)}
+                              onBlur={handleImageNameSave}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleImageNameSave();
+                                if (e.key === 'Escape') handleImageNameCancel();
+                              }}
+                              autoFocus
+                            />
+                          </div>
+                        ) : (
+                          <span 
+                            className="image-viewer-name editable" 
+                            title={viewerCurrent.title || "未命名"}
+                            onDoubleClick={handleImageNameDoubleClick}
+                          >
+                            {viewerCurrent.title || "未命名"}
+                          </span>
+                        )}
+                        
+                        {/* 图片类型 - 点击下拉选择 */}
+                        {editingImageType ? (
+                          <select
+                            className="image-type-select"
+                            value={viewerCurrent.type || "image"}
+                            onChange={(e) => handleImageTypeChange(e.target.value)}
+                            onBlur={() => setEditingImageType(false)}
+                            autoFocus
+                          >
+                            <option value="product_image">{TYPE_LABELS.product_image}</option>
+                            <option value="order_image">{TYPE_LABELS.order_image}</option>
+                            <option value="tutorial_image">{TYPE_LABELS.tutorial_image}</option>
+                            <option value="image">{TYPE_LABELS.image}</option>
+                          </select>
+                        ) : (
+                          <span 
+                            className="image-viewer-type editable"
+                            onClick={handleImageTypeClick}
+                            title="点击修改类型"
+                          >
+                            {TYPE_LABELS[viewerCurrent.type] || "图片"}
+                          </span>
+                        )}
                       </div>
                       <div className="image-viewer-page">
                         <span className="page-current">{viewerIndex + 1}</span>
@@ -334,13 +431,15 @@ export default function AddItem({ navigate, editItem }) {
                         <span className="page-total">{viewerCount}</span>
                       </div>
                     </div>
-                    
-                    {/* 图片展示区 - 600px高度 */}
-                    <div className="image-viewer-display">
+                  )}
+                  
+                  {/* 图片展示区 - 450px高度 */}
+                  <div className="image-viewer-display">
+                    {viewerCurrent ? (
                       <div 
                         className="image-viewer-img-wrap edit-mode"
                         onClick={() => document.getElementById("product-image-input")?.click()}
-                        title="点击更换图片"
+                        title="点击更换当前图片"
                       >
                         <img 
                           className="image-viewer-img" 
@@ -351,63 +450,65 @@ export default function AddItem({ navigate, editItem }) {
                           <span className="image-viewer-overlay-text">点击更换图片</span>
                         </div>
                       </div>
-                      
-                      {/* 左右翻页按钮 */}
-                      {viewerCount > 1 && (
-                        <>
-                          <button
-                            className="viewer-nav-btn viewer-nav-prev"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              changeGroupIndex("all", viewerCount, -1);
-                            }}
-                            disabled={viewerIndex === 0}
-                            title="上一张"
-                          >
-                            ‹
-                          </button>
-                          <button
-                            className="viewer-nav-btn viewer-nav-next"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              changeGroupIndex("all", viewerCount, 1);
-                            }}
-                            disabled={viewerIndex === viewerCount - 1}
-                            title="下一张"
-                          >
-                            ›
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    ) : (
+                      <div 
+                        className="image-viewer-empty-upload"
+                        onClick={() => document.getElementById("product-image-input")?.click()}
+                      >
+                        <div className="image-viewer-empty-icon">📷</div>
+                        <div className="image-viewer-empty-text">
+                          {uploading ? "上传中..." : "点击上传图片"}
+                        </div>
+                        <div className="image-viewer-empty-hint">或拖拽图片到此处</div>
+                      </div>
+                    )}
                     
-                    {/* 底部操作栏 */}
-                    <div className="image-viewer-toolbar">
+                    {/* 左右翻页按钮 - 只在有图片时显示 */}
+                    {viewerCount > 0 && (
+                      <>
+                        <button
+                          className="viewer-nav-btn viewer-nav-prev"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            changeGroupIndex("all", viewerCount, -1);
+                          }}
+                          title="上一张"
+                        >
+                          ‹
+                        </button>
+                        <button
+                          className="viewer-nav-btn viewer-nav-next"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            changeGroupIndex("all", viewerCount, 1);
+                          }}
+                          title="下一张"
+                        >
+                          ›
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  
+                  {/* 底部操作栏 - 始终显示 */}
+                  <div className="image-viewer-toolbar">
+                    {viewerCurrent && (
                       <button
                         className="viewer-toolbar-btn delete"
                         onClick={() => handleDeleteImage(viewerCurrent.id)}
                       >
-                        🗑️ 删除
+                        🗑️ 删除当前
                       </button>
-                      <button
-                        className="viewer-toolbar-btn upload"
-                        onClick={() => document.getElementById("product-image-input")?.click()}
-                      >
-                        ＋ 添加
-                      </button>
-                    </div>
+                    )}
+                    <button
+                      className="viewer-toolbar-btn upload"
+                      onClick={() => document.getElementById("product-image-input")?.click()}
+                      style={{ flex: viewerCurrent ? 1 : 'none', width: viewerCurrent ? 'auto' : '100%' }}
+                    >
+                      ＋ 添加新图片
+                    </button>
                   </div>
-                ) : (
-                  <div 
-                    className="image-viewer-empty"
-                    onClick={() => document.getElementById("product-image-input")?.click()}
-                  >
-                    <div className="image-viewer-empty-icon">📷</div>
-                    <div className="image-viewer-empty-text">
-                      {uploading ? "上传中..." : "点击上传图片"}
-                    </div>
-                  </div>
-                )}
+                </div>
               </>
             ) : (
               <div className="image-viewer-empty readonly">
