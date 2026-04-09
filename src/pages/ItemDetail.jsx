@@ -163,83 +163,92 @@ export default function ItemDetail({ item, navigate, backTarget = "list" }) {
           </div>
         </div>
 
+        {/* 右侧栏 - 图片资料 */}
         <div className="form-side-column">
           {!isBundle && (
-            <div className="form-section form-card-section edit-image-panel single-viewer">
-              <div className="form-label edit-image-panel-title">图片资料</div>
-              {viewerCurrent && (
-                <div className="viewer-bar">
-                  <div className="viewer-info">
-                    <div className="viewer-name">{viewerCurrent.title || "未命名图片"}</div>
-                    <div className="viewer-sub">
-                      <span className="viewer-badge">{TYPE_LABELS[viewerCurrent.type] || "图片"}</span>
-                      <span className="viewer-badge">{viewerIndex + 1}/{viewerCount}</span>
+            <div className="form-section form-card-section image-viewer-panel">
+              <div className="form-label image-viewer-title">图片资料</div>
+              
+              {allImageAssets.length === 0 ? (
+                // 空状态
+                <div className="image-viewer-empty">
+                  <div className="image-viewer-empty-icon">🖼️</div>
+                  <div className="image-viewer-empty-text">暂无图片</div>
+                </div>
+              ) : (
+                // 图片查看器
+                <div className="image-viewer-content">
+                  {/* 图片信息栏 */}
+                  <div className="image-viewer-info">
+                    <div className="image-viewer-meta">
+                      <span className="image-viewer-name" title={viewerCurrent?.title || "未命名"}>
+                        {viewerCurrent?.title || "未命名"}
+                      </span>
+                      <span className="image-viewer-type">
+                        {TYPE_LABELS[viewerCurrent?.type] || "图片"}
+                      </span>
+                    </div>
+                    <div className="image-viewer-page">
+                      <span className="page-current">{viewerIndex + 1}</span>
+                      <span className="page-separator">/</span>
+                      <span className="page-total">{viewerCount}</span>
                     </div>
                   </div>
-                </div>
-              )}
-              {viewerTip && (
-                <div className="viewer-tip">{viewerTip}</div>
-              )}
-                <div className="detail-assets-group-list">
-                  <div className="detail-asset-group edit-asset-upload-card">
-                    {allImageAssets.length === 0 ? (
-                      <div className="edit-image-upload-slot detail-image-readonly-slot">
-                        <div className="edit-image-preview-area empty">暂无图片</div>
-                        <div className="edit-image-upload-action readonly">仅支持查看</div>
-                      </div>
-                    ) : (
-                      (() => {
-                        const count = viewerCount;
-                        const currentIndex = viewerIndex;
-                        const current = viewerCurrent;
-                        const handleImageAreaClick = (event) => {
-                          const bounds = event.currentTarget.getBoundingClientRect();
-                          const x = event.clientX - bounds.left;
-                          if (x < bounds.width / 3) {
-                            if (currentIndex === 0) {
-                              setViewerTip("已是第一张");
-                              setTimeout(() => setViewerTip(""), 1200);
-                            } else {
-                              changeGroupIndex("all", count, -1);
-                            }
-                            return;
-                          }
-                          if (x > (bounds.width * 2) / 3) {
-                            if (currentIndex === count - 1) {
-                              setViewerTip("已是最后一张");
-                              setTimeout(() => setViewerTip(""), 1200);
-                            } else {
-                              changeGroupIndex("all", count, 1);
-                            }
-                            return;
-                          }
-                          openOverlay();
-                        };
-                        const openOverlay = () => {
+                  
+                  {/* 图片展示区 - 600px高度 */}
+                  <div className="image-viewer-display">
+                    <div 
+                      className="image-viewer-img-wrap"
+                      onClick={(e) => {
+                        // 点击中间区域放大
+                        const bounds = e.currentTarget.getBoundingClientRect();
+                        const x = e.clientX - bounds.left;
+                        if (x >= bounds.width / 3 && x <= (bounds.width * 2) / 3) {
                           setPreviewAsset({
                             assets: allImageAssets,
-                            index: currentIndex,
+                            index: viewerIndex,
                             label: "图片",
                           });
-                        };
-                        return (
-                          <div className="detail-asset-item edit-asset-item">
-                            <button
-                              className="edit-image-preview-area"
-                              type="button"
-                              onClick={handleImageAreaClick}
-                              onDoubleClick={openOverlay}
-                              title="单击左右切换，双击放大"
-                            >
-                              <img className="edit-image-preview-fixed" src={current.url} alt={current.title || "图片"} />
-                            </button>
-                          </div>
-                        );
-                      })()
+                        }
+                      }}
+                    >
+                      <img 
+                        className="image-viewer-img" 
+                        src={viewerCurrent?.url} 
+                        alt={viewerCurrent?.title || "图片"}
+                        title="点击中间区域放大查看"
+                      />
+                    </div>
+                    
+                    {/* 左右翻页按钮 */}
+                    {viewerCount > 1 && (
+                      <>
+                        <button
+                          className="viewer-nav-btn viewer-nav-prev"
+                          onClick={() => changeGroupIndex("all", viewerCount, -1)}
+                          disabled={viewerIndex === 0}
+                          title="上一张"
+                        >
+                          ‹
+                        </button>
+                        <button
+                          className="viewer-nav-btn viewer-nav-next"
+                          onClick={() => changeGroupIndex("all", viewerCount, 1)}
+                          disabled={viewerIndex === viewerCount - 1}
+                          title="下一张"
+                        >
+                          ›
+                        </button>
+                      </>
                     )}
                   </div>
+                  
+                  {/* 底部提示 */}
+                  <div className="image-viewer-hint">
+                    点击图片中间放大 · 左右切换浏览
+                  </div>
                 </div>
+              )}
             </div>
           )}
         </div>

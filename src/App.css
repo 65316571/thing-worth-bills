@@ -2249,7 +2249,7 @@ window.alert, window.confirm, window.prompt {
 }
 
 .desktop-main .form-main-column .form-textarea {
-  min-height: clamp(120px, 18vh, 220px);
+  min-height: clamp(120px, 10vh, 220px);
 }
 
 .desktop-main .form-main-column > * + *,
@@ -4720,4 +4720,605 @@ window.alert, window.confirm, window.prompt {
   .wish-search-wrap {
     width: 100%;
   }
+}
+
+/* ========================================
+   图片管理区域 - 优化样式
+   ======================================== */
+
+/* 图片信息栏 - 优化排版 */
+.image-info-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--bg) 0%, color-mix(in srgb, var(--surface) 50%, var(--bg)) 100%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.image-info-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.image-info-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.image-info-type {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-soft-bg);
+  border: 1px solid var(--accent-soft-border);
+  border-radius: 999px;
+}
+
+.image-info-pagination {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.pagination-current {
+  color: var(--accent);
+  font-size: 16px;
+}
+
+.pagination-separator {
+  color: var(--ink-4);
+  font-weight: 400;
+}
+
+.pagination-total {
+  color: var(--ink-3);
+}
+
+/* 图片预览容器 */
+.image-preview-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 图片预览容器 - 固定大小 */
+.image-preview-container {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+}
+
+/* 图片主体区域 */
+.image-preview-main {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.image-preview-main:hover .image-preview-img {
+  transform: scale(1.03);
+}
+
+/* 悬停遮罩 */
+.image-preview-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.image-preview-main:hover .image-preview-overlay {
+  opacity: 1;
+}
+
+.image-preview-hint {
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 导航按钮 - 悬浮左右 */
+.image-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.image-nav-btn:hover:not(:disabled) {
+  background: white;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.image-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.image-nav-prev {
+  left: 12px;
+  padding-right: 3px;
+}
+
+.image-nav-next {
+  right: 12px;
+  padding-left: 3px;
+}
+
+/* 底部工具栏 */
+.image-toolbar {
+  display: flex;
+  gap: 10px;
+}
+
+.image-toolbar-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1.5px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.image-toolbar-btn.delete {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: rgba(153, 27, 27, 0.2);
+}
+
+.image-toolbar-btn.delete:hover {
+  background: var(--red);
+  color: white;
+  border-color: var(--red);
+}
+
+.image-toolbar-btn.upload {
+  background: var(--green-bg);
+  color: var(--green-text);
+  border-color: var(--green-border);
+}
+
+.image-toolbar-btn.upload:hover {
+  background: var(--green);
+  color: white;
+  border-color: var(--green);
+}
+
+/* 空状态上传区域 - 固定高度 */
+.image-upload-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 24px;
+  background: linear-gradient(135deg, var(--bg) 0%, color-mix(in srgb, var(--surface) 50%, var(--bg)) 100%);
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  height: 220px;
+}
+
+.image-upload-empty:hover:not(.readonly) {
+  border-color: var(--accent);
+  background: var(--accent-soft-bg);
+}
+
+.image-upload-empty.readonly {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.image-upload-icon {
+  font-size: 48px;
+  opacity: 0.6;
+}
+
+.image-upload-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.image-upload-hint {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+/* 深色模式适配 */
+:root[data-theme='dark'] .image-info-bar {
+  background: linear-gradient(135deg, var(--surface) 0%, color-mix(in srgb, var(--bg) 50%, var(--surface)) 100%);
+}
+
+:root[data-theme='dark'] .image-nav-btn {
+  background: rgba(40, 40, 40, 0.95);
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+
+:root[data-theme='dark'] .image-nav-btn:hover:not(:disabled) {
+  background: var(--surface);
+}
+
+:root[data-theme='dark'] .image-preview-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* ========================================
+   图片查看器 - 统一样式（查看/新增/编辑页面）
+   ======================================== */
+
+/* 图片查看器面板 */
+.image-viewer-panel {
+  padding: 16px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+}
+
+.image-viewer-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+/* 空状态 */
+.image-viewer-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 600px;
+  background: linear-gradient(135deg, var(--bg) 0%, color-mix(in srgb, var(--surface) 50%, var(--bg)) 100%);
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+}
+
+.image-viewer-empty-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.image-viewer-empty-text {
+  font-size: 14px;
+  color: var(--ink-4);
+}
+
+/* 图片查看器内容区 */
+.image-viewer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 图片信息栏 - 优化排版 */
+.image-viewer-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, var(--bg) 0%, color-mix(in srgb, var(--surface) 50%, var(--bg)) 100%);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.image-viewer-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.image-viewer-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.image-viewer-type {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-soft-bg);
+  border: 1px solid var(--accent-soft-border);
+  border-radius: 999px;
+}
+
+.image-viewer-page {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.page-current {
+  color: var(--accent);
+  font-size: 16px;
+}
+
+.page-separator {
+  color: var(--ink-4);
+  font-weight: 400;
+}
+
+.page-total {
+  color: var(--ink-3);
+}
+
+/* 图片展示区 - 固定600px高度 */
+.image-viewer-display {
+  position: relative;
+  width: 100%;
+  height: 600px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+}
+
+.image-viewer-img-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-in;
+  overflow: hidden;
+}
+
+.image-viewer-img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.image-viewer-img-wrap:hover .image-viewer-img {
+  transform: scale(1.02);
+}
+
+/* 翻页按钮 */
+.viewer-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1.5px solid var(--border);
+  color: var(--ink);
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.viewer-nav-btn:hover:not(:disabled) {
+  background: white;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.viewer-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.viewer-nav-prev {
+  left: 16px;
+  padding-right: 4px;
+}
+
+.viewer-nav-next {
+  right: 16px;
+  padding-left: 4px;
+}
+
+/* 底部提示 */
+.image-viewer-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-4);
+  padding: 8px;
+}
+
+/* 深色模式适配 */
+:root[data-theme='dark'] .image-viewer-info,
+:root[data-theme='dark'] .image-viewer-empty {
+  background: linear-gradient(135deg, var(--surface) 0%, color-mix(in srgb, var(--bg) 50%, var(--surface)) 100%);
+}
+
+:root[data-theme='dark'] .viewer-nav-btn {
+  background: rgba(40, 40, 40, 0.95);
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+
+:root[data-theme='dark'] .viewer-nav-btn:hover:not(:disabled) {
+  background: var(--surface);
+}
+
+/* ========================================
+   图片查看器 - 编辑模式特有样式
+   ======================================== */
+
+/* 编辑模式悬停遮罩 */
+.image-viewer-img-wrap.edit-mode {
+  cursor: pointer;
+}
+
+.image-viewer-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.image-viewer-img-wrap.edit-mode:hover .image-viewer-overlay {
+  opacity: 1;
+}
+
+.image-viewer-overlay-text {
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 底部工具栏 */
+.image-viewer-toolbar {
+  display: flex;
+  gap: 10px;
+}
+
+.viewer-toolbar-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1.5px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.viewer-toolbar-btn.delete {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: rgba(153, 27, 27, 0.2);
+}
+
+.viewer-toolbar-btn.delete:hover {
+  background: var(--red);
+  color: white;
+  border-color: var(--red);
+}
+
+.viewer-toolbar-btn.upload {
+  background: var(--green-bg);
+  color: var(--green-text);
+  border-color: var(--green-border);
+}
+
+.viewer-toolbar-btn.upload:hover {
+  background: var(--green);
+  color: white;
+  border-color: var(--green);
+}
+
+/* 深色模式适配 */
+:root[data-theme='dark'] .image-viewer-overlay {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+:root[data-theme='dark'] .image-viewer-overlay-text {
+  background: rgba(40, 40, 40, 0.95);
+  color: var(--ink);
 }
