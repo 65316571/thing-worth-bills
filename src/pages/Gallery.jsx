@@ -214,36 +214,47 @@ export default function Gallery() {
         </div>
       </div>
 
-      {/* 筛选工具栏 */}
+      {/* 筛选工具栏 - 三栏布局 */}
       <div className="gallery-filter-bar">
         {/* 左侧：类型筛选 */}
-        <div className="gallery-filter-segmented">
-          <button className={`desktop-segmented-btn ${typeFilter === "" ? "active" : ""}`} onClick={() => setTypeFilter("")}>
-            全部类型
-          </button>
-          {TYPES.map((t) => (
-            <button key={t.value} className={`desktop-segmented-btn ${typeFilter === t.value ? "active" : ""}`} onClick={() => setTypeFilter(t.value)}>
-              {t.label}
+        <div className="gallery-filter-left">
+          <div className="gallery-filter-segmented">
+            <button className={`desktop-segmented-btn ${typeFilter === "" ? "active" : ""}`} onClick={() => setTypeFilter("")}>
+              全部
             </button>
-          ))}
+            {TYPES.map((t) => (
+              <button key={t.value} className={`desktop-segmented-btn ${typeFilter === t.value ? "active" : ""}`} onClick={() => setTypeFilter(t.value)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
         
-        {/* 中间：物品筛选 */}
-        <div className="gallery-filter-item">
-          <span className="gallery-filter-label">物品筛选</span>
-          <select 
-            className="form-select gallery-item-select" 
-            value={itemFilter} 
-            onChange={(e) => setItemFilter(e.target.value)}
-          >
-            <option value="">全部物品</option>
-            {items.map((it) => <option key={it.id} value={it.id}>{it.name}</option>)}
-          </select>
+        {/* 中间：搜索框 */}
+        <div className="gallery-filter-center">
+          <div className="gallery-filter-search">
+            <input 
+              className="form-input" 
+              placeholder="搜索图片名称..." 
+              value={titleSearch} 
+              onChange={(e) => setTitleSearch(e.target.value)} 
+            />
+          </div>
         </div>
         
-        {/* 右侧：名称搜索 */}
-        <div className="gallery-filter-search">
-          <input className="form-input" placeholder="搜索图片名称" value={titleSearch} onChange={(e) => setTitleSearch(e.target.value)} />
+        {/* 右侧：物品筛选 */}
+        <div className="gallery-filter-right">
+          <div className="gallery-filter-item">
+            <span className="gallery-filter-label">物品</span>
+            <select 
+              className="gallery-item-select" 
+              value={itemFilter} 
+              onChange={(e) => setItemFilter(e.target.value)}
+            >
+              <option value="">全部物品</option>
+              {items.map((it) => <option key={it.id} value={it.id}>{it.name}</option>)}
+            </select>
+          </div>
         </div>
       </div>
 
