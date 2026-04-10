@@ -4,6 +4,7 @@ import healthRouter from "./routes/health.js";
 import itemsRouter from "./routes/items.js";
 import setupRouter from "./routes/setup.js";
 import uploadsRouter from "./routes/uploads.js";
+import settingsRouter from "./routes/settings.js";
 import wishesRouter from "./routes/wishes.js";
 import vipMembershipsRouter from "./routes/vipMemberships.js";
 import { env } from "./config/env.js";
@@ -25,6 +26,7 @@ app.use("/api", itemsRouter);
 app.use("/api", setupRouter);
 app.use("/api", uploadsRouter);
 app.use("/api", wishesRouter);
+app.use("/api", settingsRouter);
 app.use("/api", vipMembershipsRouter);
 
 app.use((req, res) => {

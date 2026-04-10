@@ -169,6 +169,50 @@ const CREATE_VIP_MEMBERSHIPS_EXPIRE_AT_INDEX_SQL = `
   CREATE INDEX IF NOT EXISTS idx_vip_memberships_expire_at ON vip_memberships(expire_at);
 `;
 
+// 设置表：图片类型
+const CREATE_IMAGE_TYPES_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS image_types (
+    id BIGSERIAL PRIMARY KEY,
+    key VARCHAR(50) NOT NULL UNIQUE,
+    label VARCHAR(100) NOT NULL,
+    description TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+`;
+
+// 设置表：商品分类
+const CREATE_CATEGORIES_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS categories (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    color VARCHAR(7) DEFAULT '#C84B31',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+`;
+
+const CREATE_IMAGE_TYPES_UPDATED_AT_TRIGGER_SQL = `
+  DROP TRIGGER IF EXISTS image_types_set_updated_at ON image_types;
+  CREATE TRIGGER image_types_set_updated_at
+  BEFORE UPDATE ON image_types
+  FOR EACH ROW
+  EXECUTE FUNCTION set_updated_at();
+`;
+
+const CREATE_CATEGORIES_UPDATED_AT_TRIGGER_SQL = `
+  DROP TRIGGER IF EXISTS categories_set_updated_at ON categories;
+  CREATE TRIGGER categories_set_updated_at
+  BEFORE UPDATE ON categories
+  FOR EACH ROW
+  EXECUTE FUNCTION set_updated_at();
+`;
+
 const seedItems = [
   ["小米2万mAh充电宝", 159, "2023-02-15", null, "电子产品", "京东", null, null, "active", "出行必备，很耐用"],
   ["飞智黑武士3 Pro", 264.38, "2023-01-08", null, "游戏设备", "淘宝", null, null, "active", "手游神器"],
@@ -187,6 +231,20 @@ const seedVipMemberships = [
   ["哔哩哔哩大会员", "年度", "https://www.bilibili.com", "主账号", "yearly", 238, "CNY", "番剧抢先看,高码率画质,专属装扮", "2026-11-18", 15, false, "active", "主要给追番和投屏用"],
   ["网易云音乐黑胶", "连续包月", "https://music.163.com", "手机尾号 5521", "monthly", 18, "CNY", "无损音质,会员曲库,听歌识曲增强", "2026-04-06", 7, true, "expiring", "如果下月使用频率不高可以先停"],
   ["ChatGPT Plus", "月付", "https://chatgpt.com", "创作账号", "monthly", 20, "USD", "更强模型,更快响应,高级工具能力", "2026-04-22", 5, true, "active", "写作和原型设计都在用"],
+];
+
+const seedImageTypes = [
+  ["product_image", "商品照片", "物品的产品图片、外观展示", 1, true],
+  ["order_image", "订单截图", "购买凭证、订单信息截图", 2, true],
+  ["tutorial_image", "教程资料", "使用教程、说明书相关图片", 3, true],
+  ["image", "其他图片", "其他未分类图片", 4, true],
+];
+
+const seedCategories = [
+  ["电子产品", "数码电子设备", "#C84B31", 1, true],
+  ["游戏设备", "游戏相关硬件", "#2D6A4F", 2, true],
+  ["耳机", "耳机音响设备", "#92400E", 3, true],
+  ["其他", "其他未分类物品", "#666666", 4, true],
 ];
 
 export async function initializeDatabase({ withSeed = true } = {}) {
@@ -211,15 +269,23 @@ export async function initializeDatabase({ withSeed = true } = {}) {
   await query(CREATE_WISH_BOARD_CATEGORY_INDEX_SQL);
   await query(CREATE_VIP_MEMBERSHIPS_STATUS_INDEX_SQL);
   await query(CREATE_VIP_MEMBERSHIPS_EXPIRE_AT_INDEX_SQL);
+  await query(CREATE_IMAGE_TYPES_TABLE_SQL);
+  await query(CREATE_CATEGORIES_TABLE_SQL);
+  await query(CREATE_IMAGE_TYPES_UPDATED_AT_TRIGGER_SQL);
+  await query(CREATE_CATEGORIES_UPDATED_AT_TRIGGER_SQL);
 
   let insertedItems = 0;
   let insertedWishBoardItems = 0;
   let insertedVipMemberships = 0;
+  let insertedImageTypes = 0;
+  let insertedCategories = 0;
 
   if (withSeed) {
     const itemsCountResult = await query("SELECT COUNT(*)::int AS count FROM items");
     const wishBoardCountResult = await query("SELECT COUNT(*)::int AS count FROM wish_board_items");
     const vipMembershipsCountResult = await query("SELECT COUNT(*)::int AS count FROM vip_memberships");
+    const imageTypesCountResult = await query("SELECT COUNT(*)::int AS count FROM image_types");
+    const categoriesCountResult = await query("SELECT COUNT(*)::int AS count FROM categories");
 
     if (itemsCountResult.rows[0].count === 0) {
       for (const item of seedItems) {
@@ -264,13 +330,41 @@ export async function initializeDatabase({ withSeed = true } = {}) {
         insertedVipMemberships += 1;
       }
     }
+
+    if (imageTypesCountResult.rows[0].count === 0) {
+      for (const imageType of seedImageTypes) {
+        await query(
+          `
+            INSERT INTO image_types (key, label, description, sort_order, is_active)
+            VALUES ($1, $2, $3, $4, $5)
+          `,
+          imageType,
+        );
+        insertedImageTypes += 1;
+      }
+    }
+
+    if (categoriesCountResult.rows[0].count === 0) {
+      for (const category of seedCategories) {
+        await query(
+          `
+            INSERT INTO categories (name, description, color, sort_order, is_active)
+            VALUES ($1, $2, $3, $4, $5)
+          `,
+          category,
+        );
+        insertedCategories += 1;
+      }
+    }
   }
 
   return {
     success: true,
-    tables: ["items", "item_assets", "wish_board_items", "vip_memberships"],
+    tables: ["items", "item_assets", "wish_board_items", "vip_memberships", "image_types", "categories"],
     insertedItems,
     insertedWishBoardItems,
     insertedVipMemberships,
+    insertedImageTypes,
+    insertedCategories,
   };
 }
