@@ -6,6 +6,7 @@ import Stats from "./pages/Stats";
 import WishList from "./pages/WishList";
 import Data from "./pages/Data";
 import Gallery from "./pages/Gallery";
+import Shop from "./pages/Shop";
 import VipLibraryPanel from "./components/VipLibraryPanel";
 import WishBoardPanel from "./components/WishBoardPanel";
 import { ItemProvider } from "./context/ItemContext";
@@ -1151,6 +1152,8 @@ function AppContent() {
           {desktopTab === "vip" && <VipLibraryPanel />}
 
           {desktopTab === "wishes" && <WishBoardPanel />}
+
+          {desktopTab === "shop" && <Shop />}
         </main>
       </div>
     );
