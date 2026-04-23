@@ -22,16 +22,16 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/fish-api/, '/api'),
         },
-        '/fish-auth': {
-          target: fishTarget,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/fish-auth/, '/auth'),
-        },
         '/fish-ws': {
           target: fishTarget,
           changeOrigin: true,
           ws: true,
           rewrite: (path) => path.replace(/^\/fish-ws/, '/ws'),
+        },
+        '/fish-images': {
+          target: fishTarget,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/fish-images/, '/images'),
         },
       },
     },

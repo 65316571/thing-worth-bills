@@ -1716,11 +1716,51 @@ window.alert, window.confirm, window.prompt {
   gap: 14px;
 }
 
+.desktop-shop-result-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.desktop-shop-result-head-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.desktop-shop-result-thumb {
+  width: 78px;
+  height: 78px;
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.desktop-shop-result-thumb-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.4;
+  text-align: center;
+  padding: 8px;
+}
+
 .desktop-shop-result-title {
   color: var(--ink);
   font-size: 14px;
   font-weight: 600;
   line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .desktop-shop-result-price {
@@ -1782,7 +1822,7 @@ window.alert, window.confirm, window.prompt {
 .desktop-shop-log-pre {
   margin: 0;
   padding: 14px 16px;
-  max-height: 60vh;
+  max-height: 56vh;
   overflow: auto;
   font-family: var(--font-mono);
   font-size: 12px;
@@ -1790,6 +1830,53 @@ window.alert, window.confirm, window.prompt {
   color: var(--ink-2);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.desktop-shop-log-card {
+  padding: 14px;
+}
+
+.desktop-shop-log-controls {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.desktop-shop-log-field {
+  flex: 1;
+  min-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.desktop-shop-log-select {
+  width: 100%;
+  max-width: 720px;
+}
+
+.desktop-shop-log-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.desktop-shop-log-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.desktop-action-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .desktop-shop-account-head {
@@ -1807,6 +1894,63 @@ window.alert, window.confirm, window.prompt {
   font-weight: 300;
   font-size: 12px;
   word-break: break-word;
+}
+
+.fish-keeper-image-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.fish-keeper-image-card {
+  border-radius: 16px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.fish-keeper-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.fish-keeper-image-meta {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.fish-keeper-image-name {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fish-keeper-image-sub {
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 300;
+}
+
+.fish-keeper-image-del {
+  width: 100%;
+  padding: 10px 12px;
+  border-top: 1.5px solid var(--border);
+  background: var(--red-bg);
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .desktop-panel > .vip-summary-grid,

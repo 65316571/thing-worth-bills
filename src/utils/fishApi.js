@@ -1,5 +1,49 @@
 const FISH_API_PREFIX = "/fish-api";
-const FISH_AUTH_PREFIX = "/fish-auth";
+
+function encodePathSegments(path) {
+  const raw = String(path || "").replace(/\\/g, "/");
+  const segments = raw.split("/").filter(Boolean).map((part) => encodeURIComponent(part));
+  return segments.join("/");
+}
+
+function stringifySafe(value) {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function formatFastApiValidationDetail(detail) {
+  if (!Array.isArray(detail)) return "";
+  const lines = detail
+    .map((item) => {
+      if (!item || typeof item !== "object") return String(item);
+      const loc = Array.isArray(item.loc) ? item.loc.join(".") : "";
+      const msg = item.msg ? String(item.msg) : "";
+      const type = item.type ? String(item.type) : "";
+      const parts = [loc, msg, type].filter(Boolean);
+      return parts.join("：");
+    })
+    .filter(Boolean);
+  return lines.length ? lines.join("；") : "";
+}
+
+function buildErrorMessage({ status, statusText, data, rawText }) {
+  const detail = data?.detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  const validation = formatFastApiValidationDetail(detail);
+  if (validation) return validation;
+  const message = data?.message;
+  if (typeof message === "string" && message.trim()) return message;
+  const errorMessage = data?.error?.message;
+  if (typeof errorMessage === "string" && errorMessage.trim()) return errorMessage;
+  if (detail !== undefined && detail !== null) return stringifySafe(detail);
+  if (rawText && typeof rawText === "string") return rawText.slice(0, 300);
+  return `请求失败（${status}${statusText ? ` ${statusText}` : ""}）`;
+}
 
 async function fishRequest(path, options = {}) {
   const isFormData = options.body instanceof FormData;
@@ -18,14 +62,26 @@ async function fishRequest(path, options = {}) {
   });
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = null;
+    }
+  }
 
   if (!response.ok) {
-    const message = data?.detail || data?.message || `请求失败（${response.status}）`;
+    const message = buildErrorMessage({
+      status: response.status,
+      statusText: response.statusText,
+      data,
+      rawText: text,
+    });
     throw new Error(message);
   }
 
-  return data;
+  return data ?? (text || null);
 }
 
 function withQuery(path, params) {
@@ -40,15 +96,41 @@ function withQuery(path, params) {
 }
 
 export const fishApi = {
-  loginStatus(payload) {
-    return fishRequest(`${FISH_AUTH_PREFIX}/status`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-
   getDashboardSummary() {
     return fishRequest(`${FISH_API_PREFIX}/dashboard/summary`);
+  },
+
+  getKeeperSummary() {
+    return fishRequest(`${FISH_API_PREFIX}/keeper/summary`);
+  },
+
+  listImageTasks() {
+    return fishRequest(`${FISH_API_PREFIX}/keeper/images/tasks`);
+  },
+
+  listTaskImages(taskDir) {
+    return fishRequest(`${FISH_API_PREFIX}/keeper/images/tasks/${encodeURIComponent(taskDir)}/files`);
+  },
+
+  deleteTaskImageDir(taskDir) {
+    return fishRequest(`${FISH_API_PREFIX}/keeper/images/tasks/${encodeURIComponent(taskDir)}`, { method: "DELETE" });
+  },
+
+  deleteImageFile(relPath) {
+    const encoded = encodePathSegments(relPath);
+    return fishRequest(`${FISH_API_PREFIX}/keeper/images/files/${encoded}`, { method: "DELETE" });
+  },
+
+  listLogFiles() {
+    return fishRequest(`${FISH_API_PREFIX}/keeper/logs/files`);
+  },
+
+  deleteLogFile(filename) {
+    return fishRequest(`${FISH_API_PREFIX}/keeper/logs/files/${encodeURIComponent(filename)}`, { method: "DELETE" });
+  },
+
+  buildDbDownloadUrl() {
+    return `${FISH_API_PREFIX}/keeper/db/download`;
   },
 
   getTasks() {
@@ -186,4 +268,3 @@ export const fishApi = {
     return fishRequest(`${FISH_API_PREFIX}/accounts/${encodeURIComponent(name)}`, { method: "DELETE" });
   },
 };
-

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Awaitable, Callable, Optional
 
 from src.keyword_rule_engine import build_search_text, evaluate_keyword_rules
+from src.config import IMAGE_SAVE_DIR
 
 
 SellerLoader = Callable[[str], Awaitable[dict]]
@@ -40,6 +41,7 @@ class ItemAnalysisDispatcher:
         *,
         concurrency: int,
         skip_ai_analysis: bool,
+        keep_images: bool,
         seller_loader: SellerLoader,
         image_downloader: ImageDownloader,
         ai_analyzer: AIAnalyzer,
@@ -48,6 +50,7 @@ class ItemAnalysisDispatcher:
     ) -> None:
         self._semaphore = asyncio.Semaphore(max(1, concurrency))
         self._skip_ai_analysis = skip_ai_analysis
+        self._keep_images = keep_images
         self._seller_loader = seller_loader
         self._image_downloader = image_downloader
         self._ai_analyzer = ai_analyzer
@@ -124,6 +127,7 @@ class ItemAnalysisDispatcher:
         image_paths: list[str] = []
         try:
             image_paths = await self._download_images(job, record)
+            self._attach_local_images(record, image_paths)
             if not job.prompt_text:
                 return self._build_ai_error_result("任务未配置AI prompt，跳过分析。")
             ai_result = await self._ai_analyzer(record, image_paths, job.prompt_text)
@@ -143,6 +147,28 @@ class ItemAnalysisDispatcher:
         finally:
             self._cleanup_images(image_paths)
 
+    def _attach_local_images(self, record: dict, image_paths: list[str]) -> None:
+        if not self._keep_images:
+            return
+        if not image_paths:
+            return
+        item_data = record.get("商品信息", {}) or {}
+        local_rel_paths: list[str] = []
+        for img_path in image_paths:
+            try:
+                rel = os.path.relpath(img_path, start=IMAGE_SAVE_DIR)
+            except Exception:
+                continue
+            rel = str(rel).replace("\\", "/").lstrip("./")
+            if rel.startswith("../"):
+                continue
+            local_rel_paths.append(rel)
+        if not local_rel_paths:
+            return
+        item_data["本地图片列表"] = local_rel_paths
+        item_data["本地主图链接"] = local_rel_paths[0]
+        record["商品信息"] = item_data
+
     async def _download_images(self, job: ItemAnalysisJob, record: dict) -> list[str]:
         if not job.analyze_images:
             return []
@@ -157,6 +183,8 @@ class ItemAnalysisDispatcher:
         )
 
     def _cleanup_images(self, image_paths: list[str]) -> None:
+        if self._keep_images:
+            return
         for img_path in image_paths:
             try:
                 if os.path.exists(img_path):

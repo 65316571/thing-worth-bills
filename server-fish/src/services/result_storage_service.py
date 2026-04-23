@@ -42,11 +42,14 @@ def _parse_raw_record(raw_json: str) -> dict:
 def _build_query_conditions(
     *,
     filename: str,
+    recommended_only: bool,
     ai_recommended_only: bool,
     keyword_recommended_only: bool,
 ) -> tuple[str, list]:
     conditions = ["result_filename = ?"]
     params: list = [filename]
+    if recommended_only and not ai_recommended_only and not keyword_recommended_only:
+        conditions.append("is_recommended = 1")
     if ai_recommended_only:
         conditions.append("is_recommended = 1")
         conditions.append("analysis_source = ?")
@@ -173,6 +176,7 @@ def _delete_result_file_records_sync(filename: str) -> int:
 async def query_result_records(
     filename: str,
     *,
+    recommended_only: bool,
     ai_recommended_only: bool,
     keyword_recommended_only: bool,
     sort_by: str,
@@ -183,6 +187,7 @@ async def query_result_records(
     return await asyncio.to_thread(
         _query_result_records_sync,
         filename,
+        recommended_only,
         ai_recommended_only,
         keyword_recommended_only,
         sort_by,
@@ -194,6 +199,7 @@ async def query_result_records(
 
 def _query_result_records_sync(
     filename: str,
+    recommended_only: bool,
     ai_recommended_only: bool,
     keyword_recommended_only: bool,
     sort_by: str,
@@ -204,6 +210,7 @@ def _query_result_records_sync(
     bootstrap_sqlite_storage()
     where_clause, params = _build_query_conditions(
         filename=filename,
+        recommended_only=recommended_only,
         ai_recommended_only=ai_recommended_only,
         keyword_recommended_only=keyword_recommended_only,
     )
@@ -231,6 +238,7 @@ def _query_result_records_sync(
 async def load_all_result_records(
     filename: str,
     *,
+    recommended_only: bool,
     ai_recommended_only: bool,
     keyword_recommended_only: bool,
     sort_by: str,
@@ -239,6 +247,7 @@ async def load_all_result_records(
     return await asyncio.to_thread(
         _load_all_result_records_sync,
         filename,
+        recommended_only,
         ai_recommended_only,
         keyword_recommended_only,
         sort_by,
@@ -248,6 +257,7 @@ async def load_all_result_records(
 
 def _load_all_result_records_sync(
     filename: str,
+    recommended_only: bool,
     ai_recommended_only: bool,
     keyword_recommended_only: bool,
     sort_by: str,
@@ -256,6 +266,7 @@ def _load_all_result_records_sync(
     bootstrap_sqlite_storage()
     where_clause, params = _build_query_conditions(
         filename=filename,
+        recommended_only=recommended_only,
         ai_recommended_only=ai_recommended_only,
         keyword_recommended_only=keyword_recommended_only,
     )
@@ -276,6 +287,7 @@ def _load_all_result_records_sync(
 async def build_result_ndjson(filename: str) -> str:
     records = await load_all_result_records(
         filename,
+        recommended_only=False,
         ai_recommended_only=False,
         keyword_recommended_only=False,
         sort_by="crawl_time",

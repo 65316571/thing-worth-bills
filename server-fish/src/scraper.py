@@ -25,6 +25,7 @@ from src.config import (
     RUN_HEADLESS,
     RUNNING_IN_DOCKER,
     SKIP_AI_ANALYSIS,
+    KEEP_TASK_IMAGES,
     STATE_FILE,
 )
 from src.parsers import (
@@ -597,6 +598,7 @@ async def scrape_xianyu(task_config: dict, debug_limit: int = 0):
             analysis_dispatcher = ItemAnalysisDispatcher(
                 concurrency=_get_ai_analysis_concurrency(task_config),
                 skip_ai_analysis=SKIP_AI_ANALYSIS,
+                keep_images=KEEP_TASK_IMAGES,
                 seller_loader=lambda user_id: seller_profile_cache.get_or_load(
                     str(user_id),
                     lambda seller_key: scrape_user_profile(context, seller_key),
@@ -1219,7 +1221,8 @@ async def scrape_xianyu(task_config: dict, debug_limit: int = 0):
             except Exception as e:
                 print(f"发送任务暂停通知失败: {e}")
 
-        cleanup_task_images(task_config.get("task_name", "default"))
+        if not KEEP_TASK_IMAGES:
+            cleanup_task_images(task_config.get("task_name", "default"))
         return 0
 
     for attempt in range(1, attempt_limit + 1):
@@ -1285,6 +1288,7 @@ async def scrape_xianyu(task_config: dict, debug_limit: int = 0):
         await _notify_task_failure(task_config, last_error, cookie_path=last_state_path)
 
     # 清理任务图片目录
-    cleanup_task_images(task_config.get("task_name", "default"))
+    if not KEEP_TASK_IMAGES:
+        cleanup_task_images(task_config.get("task_name", "default"))
 
     return processed_item_count

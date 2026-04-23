@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
@@ -8,13 +9,15 @@ from openai import AsyncOpenAI
 load_dotenv()
 
 # --- File Paths & Directories ---
-STATE_FILE = "xianyu_state.json"
-IMAGE_SAVE_DIR = "images"
-CONFIG_FILE = "config.json"
+BASE_DIR = Path(__file__).resolve().parents[1]
+STATE_FILE = str((BASE_DIR / "xianyu_state.json").resolve())
+IMAGE_SAVE_DIR = str((BASE_DIR / "images").resolve())
+CONFIG_FILE = str((BASE_DIR / "config.json").resolve())
 os.makedirs(IMAGE_SAVE_DIR, exist_ok=True)
 
 # 任务隔离的临时图片目录前缀
 TASK_IMAGE_DIR_PREFIX = "task_images_"
+KEEP_TASK_IMAGES = os.getenv("KEEP_TASK_IMAGES", "true").lower() == "true"
 
 # --- API URL Patterns ---
 API_URL_PATTERN = "h5api.m.goofish.com/h5/mtop.taobao.idlemtopsearch.pc.search"

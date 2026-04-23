@@ -7,6 +7,7 @@ import WishList from "./pages/WishList";
 import Data from "./pages/Data";
 import Gallery from "./pages/Gallery";
 import Shop from "./pages/Shop";
+import FishKeeper from "./pages/FishKeeper";
 import VipLibraryPanel from "./components/VipLibraryPanel";
 import WishBoardPanel from "./components/WishBoardPanel";
 import { ItemProvider } from "./context/ItemContext";
@@ -602,6 +603,14 @@ function AppContent() {
                 <span className="desktop-menu-icon">🐟</span>
                 <span className="desktop-menu-text">闲鱼铺</span>
               </button>
+              <button
+                className={`desktop-menu-btn ${desktopTab === "keeper" ? "active" : ""}`}
+                onClick={() => setDesktopTab("keeper")}
+                title="鱼掌柜"
+              >
+                <span className="desktop-menu-icon">🧾</span>
+                <span className="desktop-menu-text">鱼掌柜</span>
+              </button>
             </div>
 
             <button className="desktop-switch-btn" onClick={() => setMode("chooser")} title="返回入口">
@@ -622,6 +631,7 @@ function AppContent() {
                 {desktopTab === "vip" && "会员库"}
                 {desktopTab === "wishes" && "心愿墙"}
                 {desktopTab === "shop" && "闲鱼铺"}
+                {desktopTab === "keeper" && "鱼掌柜"}
               </h2>
               <p className="desktop-subtitle">
                 {desktopTab === "value" && "直观查看每件物品的购买价值、拥有天数与每日成本。"}
@@ -631,6 +641,7 @@ function AppContent() {
                 {desktopTab === "vip" && "管理所有会员资产，包括会员信息、相关地址、会员时长。"}
                 {desktopTab === "wishes" && "维护你的待购清单与目标价格。"}
                 {desktopTab === "shop" && "维护你的闲鱼铺，包括检测物品价格、出售闲置物品。"}
+                {desktopTab === "keeper" && "管理闲鱼铺后端生成的数据、文件与图片。"}
               </p>
             </div>
             <div className="desktop-header-actions">
@@ -1154,6 +1165,8 @@ function AppContent() {
           {desktopTab === "wishes" && <WishBoardPanel />}
 
           {desktopTab === "shop" && <Shop />}
+
+          {desktopTab === "keeper" && <FishKeeper />}
         </main>
       </div>
     );

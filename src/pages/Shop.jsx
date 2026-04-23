@@ -14,6 +14,12 @@ function formatMoney(value) {
   return `¥${num.toFixed(2)}`;
 }
 
+function formatText(value, fallback = "-") {
+  if (value === undefined || value === null) return fallback;
+  const text = String(value).trim();
+  return text ? text : fallback;
+}
+
 function getProductTitle(item) {
   return item?.["商品信息"]?.["商品标题"] || "-";
 }
@@ -24,6 +30,26 @@ function getProductPrice(item) {
 
 function getProductLink(item) {
   return item?.["商品信息"]?.["商品链接"] || "";
+}
+
+function getProductImage(item) {
+  const localMain = item?.["商品信息"]?.["本地主图链接"];
+  if (localMain && typeof localMain === "string") return localMain;
+  const main = item?.["商品信息"]?.["商品主图链接"];
+  if (main && typeof main === "string") return main;
+  const localList = item?.["商品信息"]?.["本地图片列表"];
+  if (Array.isArray(localList) && localList.length && typeof localList[0] === "string") return localList[0];
+  const list = item?.["商品信息"]?.["商品图片列表"];
+  if (Array.isArray(list) && list.length && typeof list[0] === "string") return list[0];
+  return "";
+}
+
+function buildImageUrl(src) {
+  if (!src) return "";
+  const raw = String(src);
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const segments = raw.split("/").filter(Boolean).map((part) => encodeURIComponent(part));
+  return `/fish-images/${segments.join("/")}`;
 }
 
 export default function Shop() {
@@ -148,10 +174,10 @@ function FishDashboard() {
           <div className="desktop-shop-card-title">任务概览</div>
           <div className="desktop-shop-mini-table">
             {(snapshot?.task_summaries || []).slice(0, 8).map((row) => (
-              <div className="desktop-shop-mini-row" key={`${row.task_id ?? "na"}-${row.task_name}`}>
-                <div className="desktop-shop-mini-name">{row.task_name}</div>
+              <div className="desktop-shop-mini-row" key={`${row.task_id ?? "na"}-${row.task_name ?? row.taskName ?? row.name ?? row.keyword ?? "na"}`}>
+                <div className="desktop-shop-mini-name">{formatText(row.task_name ?? row.taskName ?? row.name ?? row.keyword)}</div>
                 <div className="desktop-shop-mini-meta">
-                  {row.keyword} · {row.enabled ? "启用" : "停用"} · {row.is_running ? "运行中" : "未运行"}
+                  {formatText(row.keyword)} · {row.enabled ? "启用" : "停用"} · {row.is_running ? "运行中" : "未运行"}
                 </div>
                 <div className="desktop-shop-mini-right">{row.latest_recommended_price !== null && row.latest_recommended_price !== undefined ? formatMoney(row.latest_recommended_price) : "-"}</div>
               </div>
@@ -167,7 +193,7 @@ function FishDashboard() {
               <div className="desktop-shop-mini-row" key={row.id}>
                 <div className="desktop-shop-mini-name">{row.title}</div>
                 <div className="desktop-shop-mini-meta">
-                  {row.task_name} · {row.keyword} · {row.status}
+                  {formatText(row.task_name)} · {formatText(row.keyword)} · {formatText(row.status)}
                 </div>
                 <div className="desktop-shop-mini-right">{formatDateTime(row.timestamp)}</div>
               </div>
@@ -185,12 +211,20 @@ function FishTasks() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  function normalizeKeywordRulesText(text) {
+    if (!text) return [];
+    return String(text)
+      .split(/[\n,]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
   const [createMode, setCreateMode] = useState("keyword");
   const [form, setForm] = useState({
     task_name: "",
     keyword: "",
     description: "",
-    cron: "",
+    keyword_rules_text: "",
     max_pages: 3,
     min_price: "",
     max_price: "",
@@ -290,21 +324,33 @@ function FishTasks() {
 
   async function submitCreate() {
     setError("");
+    const taskName = form.task_name.trim();
+    const keyword = form.keyword.trim();
+    const description = form.description.trim();
+    const keywordRules = normalizeKeywordRulesText(form.keyword_rules_text);
+
+    if (!taskName || !keyword) {
+      setError("任务名称与关键字为必填");
+      return;
+    }
+    if (createMode === "ai" && !description) {
+      setError("AI 判断模式下，描述为必填");
+      return;
+    }
+
+    const effectiveKeywordRules =
+      createMode === "keyword" ? (keywordRules.length ? keywordRules : [keyword]) : [];
+
     const payload = {
-      task_name: form.task_name.trim(),
-      keyword: form.keyword.trim(),
-      description: form.description.trim() || undefined,
-      cron: form.cron.trim() || null,
+      task_name: taskName,
+      keyword,
+      description: description || undefined,
       max_pages: Number(form.max_pages || 1),
       min_price: form.min_price.trim() ? form.min_price.trim() : null,
       max_price: form.max_price.trim() ? form.max_price.trim() : null,
       decision_mode: createMode,
+      keyword_rules: effectiveKeywordRules,
     };
-
-    if (!payload.task_name || !payload.keyword) {
-      setError("任务名称与关键字为必填");
-      return;
-    }
 
     setLoading(true);
     try {
@@ -372,11 +418,6 @@ function FishTasks() {
           </div>
 
           <div className="desktop-shop-form-field">
-            <div className="desktop-shop-form-label">Cron（可选）</div>
-            <input className="form-input" value={form.cron} onChange={(e) => setForm((p) => ({ ...p, cron: e.target.value }))} placeholder="例如：*/20 * * * *" />
-          </div>
-
-          <div className="desktop-shop-form-field">
             <div className="desktop-shop-form-label">最大页数</div>
             <input
               className="form-input"
@@ -401,6 +442,19 @@ function FishTasks() {
             <div className="desktop-shop-form-label">描述（建议填写，有助于 AI 生成标准）</div>
             <textarea className="form-textarea" rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder="例如：仅自用成色好；不要翻新；优先同城" />
           </div>
+
+          {createMode === "keyword" && (
+            <div className="desktop-shop-form-field desktop-shop-form-field-wide">
+              <div className="desktop-shop-form-label">关键词规则（逗号或换行分隔，留空则默认使用“搜索关键字”）</div>
+              <textarea
+                className="form-textarea"
+                rows={3}
+                value={form.keyword_rules_text}
+                onChange={(e) => setForm((p) => ({ ...p, keyword_rules_text: e.target.value }))}
+                placeholder="例如：全新, 未拆封, 国行"
+              />
+            </div>
+          )}
         </div>
 
         <div className="desktop-shop-form-actions">
@@ -433,7 +487,6 @@ function FishTasks() {
               <th>任务</th>
               <th>关键字</th>
               <th>模式</th>
-              <th>Cron</th>
               <th>状态</th>
               <th>操作</th>
             </tr>
@@ -447,7 +500,6 @@ function FishTasks() {
                 </td>
                 <td>{task.keyword}</td>
                 <td>{task.decision_mode === "ai" ? "AI" : "关键词"}</td>
-                <td>{task.cron || "-"}</td>
                 <td>
                   <div className="desktop-shop-task-state">
                     <button className={`desktop-action-btn ${task.enabled ? "" : "warning"}`} onClick={() => toggleEnabled(task, !task.enabled)}>
@@ -473,7 +525,7 @@ function FishTasks() {
             ))}
             {tasks.length === 0 && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={5}>
                   <div className="desktop-empty-inline">暂无任务</div>
                 </td>
               </tr>
@@ -496,7 +548,7 @@ function FishResults() {
   const [error, setError] = useState("");
 
   const [filters, setFilters] = useState({
-    recommended_only: true,
+    recommended_only: false,
     ai_recommended_only: false,
     keyword_recommended_only: false,
     sort_by: "crawl_time",
@@ -567,10 +619,26 @@ function FishResults() {
     return limit ? Math.max(1, Math.ceil((total || 0) / limit)) : 1;
   }, [filters.limit, total]);
 
+  const exportParams = useMemo(() => {
+    return {
+      recommended_only: filters.recommended_only,
+      ai_recommended_only: filters.ai_recommended_only,
+      keyword_recommended_only: filters.keyword_recommended_only,
+      sort_by: filters.sort_by,
+      sort_order: filters.sort_order,
+    };
+  }, [
+    filters.recommended_only,
+    filters.ai_recommended_only,
+    filters.keyword_recommended_only,
+    filters.sort_by,
+    filters.sort_order,
+  ]);
+
   const exportUrl = useMemo(() => {
     if (!selected) return "";
-    return fishApi.buildResultExportUrl(selected, filters);
-  }, [filters, selected]);
+    return fishApi.buildResultExportUrl(selected, exportParams);
+  }, [exportParams, selected]);
 
   async function removeFile(filename) {
     setError("");
@@ -631,7 +699,7 @@ function FishResults() {
                 checked={Boolean(filters.recommended_only)}
                 onChange={(e) => setFilters((p) => ({ ...p, page: 1, recommended_only: e.target.checked }))}
               />
-              仅推荐
+              仅推荐（全部）
             </label>
             <label className="desktop-shop-check">
               <input
@@ -714,17 +782,34 @@ function FishResults() {
                 const analysis = item?.ai_analysis || {};
                 const recommended = Boolean(analysis.is_recommended);
                 const link = getProductLink(item);
+                const image = buildImageUrl(getProductImage(item));
                 return (
                   <div className={`desktop-shop-result-card ${recommended ? "recommended" : ""}`} key={`${item?.["商品信息"]?.["商品ID"] || idx}`}>
                     <div className="desktop-shop-result-head">
-                      <div className="desktop-shop-result-title">{getProductTitle(item)}</div>
+                      <div className="desktop-shop-result-left">
+                        {image ? (
+                          <img
+                            className="desktop-shop-result-thumb"
+                            src={image}
+                            alt={getProductTitle(item)}
+                            loading="lazy"
+                            onClick={() => window.open(image, "_blank", "noopener,noreferrer")}
+                            style={{ cursor: "pointer" }}
+                          />
+                        ) : (
+                          <div className="desktop-shop-result-thumb desktop-shop-result-thumb-empty">暂无图片</div>
+                        )}
+                        <div className="desktop-shop-result-head-text">
+                          <div className="desktop-shop-result-title">{getProductTitle(item)}</div>
+                          <div className="desktop-shop-result-meta">
+                            <span>任务：{item?.["任务名称"] || "-"}</span>
+                            <span>关键字：{item?.["搜索关键字"] || "-"}</span>
+                            <span>爬取：{formatDateTime(item?.["爬取时间"])}</span>
+                            <span>发布：{formatDateTime(item?.["商品信息"]?.["发布时间"])}</span>
+                          </div>
+                        </div>
+                      </div>
                       <div className="desktop-shop-result-price">{getProductPrice(item)}</div>
-                    </div>
-                    <div className="desktop-shop-result-meta">
-                      <span>任务：{item?.["任务名称"] || "-"}</span>
-                      <span>关键字：{item?.["搜索关键字"] || "-"}</span>
-                      <span>爬取：{formatDateTime(item?.["爬取时间"])}</span>
-                      <span>发布：{formatDateTime(item?.["商品信息"]?.["发布时间"])}</span>
                     </div>
                     <div className="desktop-shop-result-reason">
                       <span className={`desktop-shop-pill ${recommended ? "running" : ""}`}>{recommended ? "推荐" : "不推荐"}</span>
@@ -754,11 +839,13 @@ function FishResults() {
 function FishLogs() {
   const [tasks, setTasks] = useState([]);
   const [taskId, setTaskId] = useState("");
-  const [offset, setOffset] = useState(0);
+  const [offsetLines, setOffsetLines] = useState(0);
+  const [nextOffset, setNextOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const limitLines = 160;
 
   async function loadTasks() {
     try {
@@ -772,16 +859,17 @@ function FishLogs() {
     }
   }
 
-  async function loadTail(reset = false) {
+  async function loadTailAt(targetOffsetLines) {
     if (!taskId) return;
-    const nextOffset = reset ? 0 : offset;
     setLoading(true);
     setError("");
     try {
-      const data = await fishApi.getLogTail(Number(taskId), nextOffset, 120);
+      const safeOffset = Math.max(0, Number(targetOffsetLines || 0));
+      const data = await fishApi.getLogTail(Number(taskId), safeOffset, limitLines);
       setContent(data?.content || "");
       setHasMore(Boolean(data?.has_more));
-      setOffset(data?.next_offset ?? 0);
+      setOffsetLines(safeOffset);
+      setNextOffset(Number(data?.next_offset ?? safeOffset));
     } catch (e) {
       setError(e.message || "加载失败");
     } finally {
@@ -794,9 +882,10 @@ function FishLogs() {
     setError("");
     try {
       await fishApi.clearLogs(Number(taskId));
-      setOffset(0);
+      setOffsetLines(0);
+      setNextOffset(0);
       setContent("");
-      loadTail(true);
+      loadTailAt(0);
     } catch (e) {
       setError(e.message || "清空失败");
     }
@@ -808,45 +897,66 @@ function FishLogs() {
 
   useEffect(() => {
     if (!taskId) return;
-    setOffset(0);
-    loadTail(true);
+    setOffsetLines(0);
+    setNextOffset(0);
+    loadTailAt(0);
   }, [taskId]);
 
   return (
     <div className="desktop-shop-section">
       <div className="desktop-shop-toolbar-row">
         <div className="desktop-panel-title">日志</div>
-        <div className="desktop-shop-toolbar-actions">
-          <select className="form-select" value={taskId} onChange={(e) => setTaskId(e.target.value)}>
-            {tasks.map((t) => (
-              <option value={t.id} key={t.id}>
-                {t.task_name}
-              </option>
-            ))}
-          </select>
-          <button className="desktop-action-btn" onClick={() => loadTail(true)} disabled={loading || !taskId}>
-            {loading ? "加载中..." : "刷新"}
-          </button>
-          <button className="desktop-action-btn warning" onClick={clear} disabled={!taskId}>
-            清空
-          </button>
-        </div>
+        <button className="desktop-action-btn" onClick={() => loadTailAt(0)} disabled={loading || !taskId}>
+          {loading ? "加载中..." : "刷新"}
+        </button>
       </div>
 
       {error && <div className="notice desktop-notice">接口异常：{error}</div>}
 
-      <div className="desktop-shop-log">
-        <pre className="desktop-shop-log-pre">{content || "暂无日志"}</pre>
-      </div>
+      <div className="desktop-shop-card desktop-shop-log-card">
+        <div className="desktop-shop-log-controls">
+          <div className="desktop-shop-log-field">
+            <div className="desktop-shop-form-label">选择任务</div>
+            <select
+              className="form-select desktop-shop-log-select"
+              value={taskId}
+              onChange={(e) => setTaskId(e.target.value)}
+              disabled={tasks.length === 0}
+            >
+              {tasks.map((t) => (
+                <option value={t.id} key={t.id}>
+                  {t.task_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="desktop-shop-log-actions">
+            <button className="desktop-action-btn" onClick={() => loadTailAt(0)} disabled={loading || !taskId}>
+              {loading ? "加载中..." : "刷新到最新"}
+            </button>
+            <button className="desktop-action-btn warning" onClick={clear} disabled={!taskId}>
+              清空日志
+            </button>
+          </div>
+        </div>
 
-      <div className="desktop-shop-pagination desktop-shop-pagination-left">
-        <button className="desktop-action-btn" onClick={() => { setOffset(Math.max(0, offset - 120)); loadTail(); }} disabled={offset <= 0}>
-          上一页
-        </button>
-        <button className="desktop-action-btn" onClick={() => loadTail()} disabled={!hasMore}>
-          下一页
-        </button>
-        <div className="desktop-shop-pagination-text">偏移行：{offset}</div>
+        <div className="desktop-shop-log">
+          <pre className="desktop-shop-log-pre">{content || "暂无日志"}</pre>
+        </div>
+
+        <div className="desktop-shop-log-footer">
+          <div className="desktop-shop-pagination-text">
+            已向上翻 {offsetLines} 行 · 每页 {limitLines} 行
+          </div>
+          <div className="desktop-action-group">
+            <button className="desktop-action-btn" onClick={() => loadTailAt(Math.max(0, offsetLines - limitLines))} disabled={offsetLines <= 0}>
+              更新（更近）
+            </button>
+            <button className="desktop-action-btn" onClick={() => loadTailAt(nextOffset)} disabled={!hasMore}>
+              更早
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
