@@ -78,13 +78,9 @@ export default function Shop() {
             账号
           </button>
         </div>
-
-        <div className="desktop-shop-native-subtitle">
-          接口来自 server-fish（默认 8000 端口）。如提示请求失败，请确认后端已启动，且开发代理已配置。
-        </div>
       </div>
 
-      <div className="desktop-shop-native-body">
+      <div className={`desktop-shop-native-body ${tab === "results" || tab === "dashboard" ? "desktop-shop-native-body-fixed" : ""}`}>
         {tab === "dashboard" && <FishDashboard />}
         {tab === "tasks" && <FishTasks />}
         {tab === "results" && <FishResults />}
@@ -188,8 +184,8 @@ function FishDashboard() {
 
         <div className="desktop-shop-card">
           <div className="desktop-shop-card-title">最近动态</div>
-          <div className="desktop-shop-mini-table">
-            {(snapshot?.recent_activities || []).slice(0, 10).map((row) => (
+          <div className="desktop-shop-mini-table desktop-shop-mini-table-scroll">
+            {(snapshot?.recent_activities || []).map((row) => (
               <div className="desktop-shop-mini-row" key={row.id}>
                 <div className="desktop-shop-mini-name">{row.title}</div>
                 <div className="desktop-shop-mini-meta">
@@ -496,7 +492,7 @@ function FishTasks() {
               <tr key={task.id}>
                 <td>
                   <div className="desktop-shop-task-name">{task.task_name}</div>
-                  <div className="desktop-shop-task-sub">{task.description || "-"}</div>
+                  {task.description ? <div className="desktop-shop-task-sub">{task.description}</div> : null}
                 </td>
                 <td>{task.keyword}</td>
                 <td>{task.decision_mode === "ai" ? "AI" : "关键词"}</td>
@@ -547,6 +543,21 @@ function FishResults() {
   const [loadingItems, setLoadingItems] = useState(false);
   const [error, setError] = useState("");
 
+  const [fileQuery, setFileQuery] = useState("");
+  const DEFAULT_FILTERS = useMemo(
+    () => ({
+      recommended_only: false,
+      ai_recommended_only: false,
+      keyword_recommended_only: false,
+      sort_by: "crawl_time",
+      sort_order: "desc",
+      page: 1,
+      limit: 10,
+      q: "",
+    }),
+    []
+  );
+
   const [filters, setFilters] = useState({
     recommended_only: false,
     ai_recommended_only: false,
@@ -554,8 +565,10 @@ function FishResults() {
     sort_by: "crawl_time",
     sort_order: "desc",
     page: 1,
-    limit: 30,
+    limit: 10,
+    q: "",
   });
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   async function loadFiles() {
     setLoadingFiles(true);
@@ -612,7 +625,16 @@ function FishResults() {
   useEffect(() => {
     if (!selected) return;
     loadContent(selected, filters);
-  }, [filters.page, filters.limit, filters.sort_by, filters.sort_order, filters.recommended_only, filters.ai_recommended_only, filters.keyword_recommended_only]);
+  }, [
+    filters.page,
+    filters.limit,
+    filters.sort_by,
+    filters.sort_order,
+    filters.recommended_only,
+    filters.ai_recommended_only,
+    filters.keyword_recommended_only,
+    filters.q,
+  ]);
 
   const totalPages = useMemo(() => {
     const limit = Number(filters.limit || 1);
@@ -626,6 +648,7 @@ function FishResults() {
       keyword_recommended_only: filters.keyword_recommended_only,
       sort_by: filters.sort_by,
       sort_order: filters.sort_order,
+      q: filters.q,
     };
   }, [
     filters.recommended_only,
@@ -633,12 +656,41 @@ function FishResults() {
     filters.keyword_recommended_only,
     filters.sort_by,
     filters.sort_order,
+    filters.q,
   ]);
 
   const exportUrl = useMemo(() => {
     if (!selected) return "";
     return fishApi.buildResultExportUrl(selected, exportParams);
   }, [exportParams, selected]);
+
+  const filteredFiles = useMemo(() => {
+    const q = String(fileQuery || "").trim().toLowerCase();
+    if (!q) return files;
+    return files.filter((name) => String(name).toLowerCase().includes(q));
+  }, [fileQuery, files]);
+
+  function resetFilters() {
+    setFilters((p) => ({ ...DEFAULT_FILTERS, page: 1, limit: p.limit || DEFAULT_FILTERS.limit }));
+  }
+
+  function setAiOnly(nextValue) {
+    setFilters((p) => ({
+      ...p,
+      page: 1,
+      ai_recommended_only: Boolean(nextValue),
+      keyword_recommended_only: Boolean(nextValue) ? false : p.keyword_recommended_only,
+    }));
+  }
+
+  function setKeywordOnly(nextValue) {
+    setFilters((p) => ({
+      ...p,
+      page: 1,
+      keyword_recommended_only: Boolean(nextValue),
+      ai_recommended_only: Boolean(nextValue) ? false : p.ai_recommended_only,
+    }));
+  }
 
   async function removeFile(filename) {
     setError("");
@@ -657,12 +709,18 @@ function FishResults() {
   }
 
   return (
-    <div className="desktop-shop-section">
+    <div className="desktop-shop-section fish-results-page">
       <div className="desktop-shop-toolbar-row">
         <div className="desktop-panel-title">结果查看</div>
         <div className="desktop-shop-toolbar-actions">
           <button className="desktop-action-btn" onClick={loadFiles} disabled={loadingFiles}>
             {loadingFiles ? "刷新中..." : "刷新文件"}
+          </button>
+          <button className="desktop-action-btn" onClick={() => setFiltersOpen(true)} disabled={!selected}>
+            筛选
+          </button>
+          <button className="desktop-action-btn" onClick={resetFilters} disabled={!selected}>
+            重置
           </button>
           <button className="desktop-action-btn" onClick={() => selected && window.open(exportUrl, "_blank", "noopener,noreferrer")} disabled={!selected}>
             导出 CSV
@@ -672,163 +730,243 @@ function FishResults() {
 
       {error && <div className="notice desktop-notice">接口异常：{error}</div>}
 
-      <div className="desktop-shop-results-grid">
-        <div className="desktop-shop-card">
-          <div className="desktop-shop-card-title">文件</div>
-          <div className="desktop-shop-file-list">
-            {files.map((filename) => (
-              <div className={`desktop-shop-file ${selected === filename ? "active" : ""}`} key={filename}>
-                <button className="desktop-shop-file-btn" onClick={() => { setFilters((p) => ({ ...p, page: 1 })); setSelected(filename); }}>
-                  {filename}
-                </button>
-                <button className="desktop-shop-file-del" onClick={() => removeFile(filename)} title="删除文件">
-                  ×
-                </button>
-              </div>
-            ))}
-            {files.length === 0 && <div className="desktop-empty-inline">暂无结果文件</div>}
+      <div className="fish-results-layout">
+        <div className="fish-results-aside">
+          <div className="desktop-shop-card fish-results-files-card">
+            <div className="fish-results-card-head">
+              <div className="desktop-shop-card-title">文件</div>
+              <button className="desktop-action-btn" onClick={loadFiles} disabled={loadingFiles}>
+                {loadingFiles ? "刷新中..." : "刷新"}
+              </button>
+            </div>
+
+            <input className="form-input fish-results-file-search" value={fileQuery} onChange={(e) => setFileQuery(e.target.value)} placeholder="搜索文件名" />
+
+            <div className="fish-results-file-list">
+              {filteredFiles.map((filename) => (
+                <div className={`desktop-shop-file ${selected === filename ? "active" : ""}`} key={filename}>
+                  <button className="desktop-shop-file-btn" onClick={() => { setFilters((p) => ({ ...p, page: 1 })); setSelected(filename); }}>
+                    {filename}
+                  </button>
+                  <button className="desktop-shop-file-del" onClick={() => removeFile(filename)} title="删除文件">
+                    ×
+                  </button>
+                </div>
+              ))}
+              {filteredFiles.length === 0 && <div className="desktop-empty-inline">{files.length === 0 ? "暂无结果文件" : "未找到匹配文件"}</div>}
+            </div>
           </div>
         </div>
 
-        <div className="desktop-shop-card desktop-shop-card-wide">
-          <div className="desktop-shop-card-title">筛选</div>
-          <div className="desktop-shop-filter-row">
-            <label className="desktop-shop-check">
+        <div className="fish-results-main">
+          <div className="desktop-shop-card fish-results-sticky-card">
+            <div className="fish-results-toolbar-row">
               <input
-                type="checkbox"
-                checked={Boolean(filters.recommended_only)}
-                onChange={(e) => setFilters((p) => ({ ...p, page: 1, recommended_only: e.target.checked }))}
+                className="form-input fish-results-q"
+                value={filters.q}
+                onChange={(e) => setFilters((p) => ({ ...p, page: 1, q: e.target.value }))}
+                placeholder="搜索：标题 / 关键字 / 任务 / 卖家"
+                disabled={!selected}
               />
-              仅推荐（全部）
-            </label>
-            <label className="desktop-shop-check">
-              <input
-                type="checkbox"
-                checked={Boolean(filters.ai_recommended_only)}
-                onChange={(e) => setFilters((p) => ({ ...p, page: 1, ai_recommended_only: e.target.checked }))}
-              />
-              仅 AI 推荐
-            </label>
-            <label className="desktop-shop-check">
-              <input
-                type="checkbox"
-                checked={Boolean(filters.keyword_recommended_only)}
-                onChange={(e) => setFilters((p) => ({ ...p, page: 1, keyword_recommended_only: e.target.checked }))}
-              />
-              仅关键词推荐
-            </label>
 
-            <select className="form-select" value={filters.sort_by} onChange={(e) => setFilters((p) => ({ ...p, page: 1, sort_by: e.target.value }))}>
-              <option value="crawl_time">按爬取时间</option>
-              <option value="publish_time">按发布时间</option>
-              <option value="price">按价格</option>
-              <option value="keyword_hit_count">按命中数</option>
-            </select>
-            <select className="form-select" value={filters.sort_order} onChange={(e) => setFilters((p) => ({ ...p, page: 1, sort_order: e.target.value }))}>
-              <option value="desc">降序</option>
-              <option value="asc">升序</option>
-            </select>
+              <div className="desktop-shop-pagination fish-results-pagination">
+                <button className="desktop-action-btn" onClick={() => setFilters((p) => ({ ...p, page: 1 }))} disabled={!selected || filters.page <= 1}>
+                  首页
+                </button>
+                <button className="desktop-action-btn" onClick={() => setFilters((p) => ({ ...p, page: Math.max(1, p.page - 1) }))} disabled={!selected || filters.page <= 1}>
+                  上一页
+                </button>
+                <div className="desktop-shop-pagination-text">
+                  {selected ? `第 ${filters.page} / ${totalPages} 页 · 共 ${total} 条` : "未选择文件"}
+                </div>
+                <button className="desktop-action-btn" onClick={() => setFilters((p) => ({ ...p, page: Math.min(totalPages, p.page + 1) }))} disabled={!selected || filters.page >= totalPages}>
+                  下一页
+                </button>
+              </div>
+            </div>
 
-            <select className="form-select" value={filters.limit} onChange={(e) => setFilters((p) => ({ ...p, page: 1, limit: Number(e.target.value) }))}>
-              <option value={20}>20/页</option>
-              <option value={30}>30/页</option>
-              <option value={50}>50/页</option>
-            </select>
+            {insights && (
+              <div className="fish-results-insights-bar">
+                <div className="fish-results-insights-label">洞察</div>
+                <div className="fish-results-insights-items">
+                  <div className="fish-results-insight-item">
+                    <div className="fish-results-insight-k">样本</div>
+                    <div className="fish-results-insight-v">{insights?.market_summary?.sample_count ?? "-"}</div>
+                  </div>
+                  <div className="fish-results-insight-item">
+                    <div className="fish-results-insight-k">均价</div>
+                    <div className="fish-results-insight-v">
+                      {insights?.market_summary?.avg_price !== null && insights?.market_summary?.avg_price !== undefined ? formatMoney(insights.market_summary.avg_price) : "-"}
+                    </div>
+                  </div>
+                  <div className="fish-results-insight-item">
+                    <div className="fish-results-insight-k">中位数</div>
+                    <div className="fish-results-insight-v">
+                      {insights?.market_summary?.median_price !== null && insights?.market_summary?.median_price !== undefined ? formatMoney(insights.market_summary.median_price) : "-"}
+                    </div>
+                  </div>
+                  <div className="fish-results-insight-item">
+                    <div className="fish-results-insight-k">最新快照</div>
+                    <div className="fish-results-insight-v">{formatDateTime(insights?.latest_snapshot_at)}</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {insights && (
-            <div className="desktop-shop-insights">
-              <div className="desktop-shop-insights-title">洞察</div>
-              <div className="desktop-shop-kv-grid desktop-shop-kv-grid-tight">
-                <div className="desktop-shop-kv">
-                  <div className="desktop-shop-kv-label">样本数</div>
-                  <div className="desktop-shop-kv-value">{insights?.market_summary?.sample_count ?? "-"}</div>
+          {filtersOpen && (
+            <div
+              className="fish-results-filter-drawer-backdrop"
+              onClick={() => setFiltersOpen(false)}
+              role="presentation"
+            >
+              <div className="fish-results-filter-drawer" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="筛选">
+                <div className="fish-results-filter-drawer-head">
+                  <div className="fish-results-filter-drawer-title">筛选</div>
+                  <button className="desktop-action-btn" onClick={() => setFiltersOpen(false)}>
+                    关闭
+                  </button>
                 </div>
-                <div className="desktop-shop-kv">
-                  <div className="desktop-shop-kv-label">均价</div>
-                  <div className="desktop-shop-kv-value">{insights?.market_summary?.avg_price !== null && insights?.market_summary?.avg_price !== undefined ? formatMoney(insights.market_summary.avg_price) : "-"}</div>
-                </div>
-                <div className="desktop-shop-kv">
-                  <div className="desktop-shop-kv-label">中位数</div>
-                  <div className="desktop-shop-kv-value">{insights?.market_summary?.median_price !== null && insights?.market_summary?.median_price !== undefined ? formatMoney(insights.market_summary.median_price) : "-"}</div>
-                </div>
-                <div className="desktop-shop-kv">
-                  <div className="desktop-shop-kv-label">最新快照</div>
-                  <div className="desktop-shop-kv-value">{formatDateTime(insights?.latest_snapshot_at)}</div>
+
+                <div className="fish-results-filter-drawer-body">
+                  <div className="fish-results-filter-group">
+                    <div className="fish-results-filter-group-title">推荐筛选</div>
+                    <div className="fish-results-seg">
+                      <button
+                        className={`fish-results-seg-btn ${filters.recommended_only ? "active" : ""}`}
+                        onClick={() => setFilters((p) => ({ ...p, page: 1, recommended_only: !p.recommended_only }))}
+                        disabled={!selected}
+                        type="button"
+                      >
+                        仅推荐
+                      </button>
+                      <button
+                        className={`fish-results-seg-btn ${filters.ai_recommended_only ? "active" : ""}`}
+                        onClick={() => setAiOnly(!filters.ai_recommended_only)}
+                        disabled={!selected}
+                        type="button"
+                      >
+                        仅 AI
+                      </button>
+                      <button
+                        className={`fish-results-seg-btn ${filters.keyword_recommended_only ? "active" : ""}`}
+                        onClick={() => setKeywordOnly(!filters.keyword_recommended_only)}
+                        disabled={!selected}
+                        type="button"
+                      >
+                        仅关键词
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="fish-results-filter-group">
+                    <div className="fish-results-filter-group-title">排序字段</div>
+                    <div className="fish-results-seg">
+                      <button className={`fish-results-seg-btn ${filters.sort_by === "crawl_time" ? "active" : ""}`} onClick={() => setFilters((p) => ({ ...p, page: 1, sort_by: "crawl_time" }))} disabled={!selected} type="button">
+                        爬取时间
+                      </button>
+                      <button className={`fish-results-seg-btn ${filters.sort_by === "publish_time" ? "active" : ""}`} onClick={() => setFilters((p) => ({ ...p, page: 1, sort_by: "publish_time" }))} disabled={!selected} type="button">
+                        发布时间
+                      </button>
+                      <button className={`fish-results-seg-btn ${filters.sort_by === "price" ? "active" : ""}`} onClick={() => setFilters((p) => ({ ...p, page: 1, sort_by: "price" }))} disabled={!selected} type="button">
+                        价格
+                      </button>
+                      <button className={`fish-results-seg-btn ${filters.sort_by === "keyword_hit_count" ? "active" : ""}`} onClick={() => setFilters((p) => ({ ...p, page: 1, sort_by: "keyword_hit_count" }))} disabled={!selected} type="button">
+                        命中数
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="fish-results-filter-group">
+                    <div className="fish-results-filter-group-title">排序方向</div>
+                    <div className="fish-results-seg">
+                      <button className={`fish-results-seg-btn ${filters.sort_order === "desc" ? "active" : ""}`} onClick={() => setFilters((p) => ({ ...p, page: 1, sort_order: "desc" }))} disabled={!selected} type="button">
+                        降序
+                      </button>
+                      <button className={`fish-results-seg-btn ${filters.sort_order === "asc" ? "active" : ""}`} onClick={() => setFilters((p) => ({ ...p, page: 1, sort_order: "asc" }))} disabled={!selected} type="button">
+                        升序
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="fish-results-filter-group">
+                    <div className="fish-results-filter-group-title">每页数量</div>
+                    <div className="fish-results-seg">
+                      <button className={`fish-results-seg-btn ${Number(filters.limit) === 10 ? "active" : ""}`} onClick={() => setFilters((p) => ({ ...p, page: 1, limit: 10 }))} disabled={!selected} type="button">
+                        10/页
+                      </button>
+                      <button className={`fish-results-seg-btn ${Number(filters.limit) === 30 ? "active" : ""}`} onClick={() => setFilters((p) => ({ ...p, page: 1, limit: 30 }))} disabled={!selected} type="button">
+                        30/页
+                      </button>
+                      <button className={`fish-results-seg-btn ${Number(filters.limit) === 50 ? "active" : ""}`} onClick={() => setFilters((p) => ({ ...p, page: 1, limit: 50 }))} disabled={!selected} type="button">
+                        50/页
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="desktop-shop-pagination">
-            <button className="desktop-action-btn" onClick={() => setFilters((p) => ({ ...p, page: 1 }))} disabled={filters.page <= 1}>
-              首页
-            </button>
-            <button className="desktop-action-btn" onClick={() => setFilters((p) => ({ ...p, page: Math.max(1, p.page - 1) }))} disabled={filters.page <= 1}>
-              上一页
-            </button>
-            <div className="desktop-shop-pagination-text">
-              第 {filters.page} / {totalPages} 页 · 共 {total} 条
-            </div>
-            <button className="desktop-action-btn" onClick={() => setFilters((p) => ({ ...p, page: Math.min(totalPages, p.page + 1) }))} disabled={filters.page >= totalPages}>
-              下一页
-            </button>
-          </div>
-
-          <div className="desktop-shop-results-list">
-            {loadingItems && <div className="desktop-empty-inline">加载中...</div>}
-            {!loadingItems &&
-              items.map((item, idx) => {
-                const analysis = item?.ai_analysis || {};
-                const recommended = Boolean(analysis.is_recommended);
-                const link = getProductLink(item);
-                const image = buildImageUrl(getProductImage(item));
-                return (
-                  <div className={`desktop-shop-result-card ${recommended ? "recommended" : ""}`} key={`${item?.["商品信息"]?.["商品ID"] || idx}`}>
-                    <div className="desktop-shop-result-head">
-                      <div className="desktop-shop-result-left">
-                        {image ? (
-                          <img
-                            className="desktop-shop-result-thumb"
-                            src={image}
-                            alt={getProductTitle(item)}
-                            loading="lazy"
-                            onClick={() => window.open(image, "_blank", "noopener,noreferrer")}
-                            style={{ cursor: "pointer" }}
-                          />
-                        ) : (
-                          <div className="desktop-shop-result-thumb desktop-shop-result-thumb-empty">暂无图片</div>
-                        )}
-                        <div className="desktop-shop-result-head-text">
-                          <div className="desktop-shop-result-title">{getProductTitle(item)}</div>
-                          <div className="desktop-shop-result-meta">
-                            <span>任务：{item?.["任务名称"] || "-"}</span>
-                            <span>关键字：{item?.["搜索关键字"] || "-"}</span>
-                            <span>爬取：{formatDateTime(item?.["爬取时间"])}</span>
-                            <span>发布：{formatDateTime(item?.["商品信息"]?.["发布时间"])}</span>
+          <div className="desktop-shop-card fish-results-list-card">
+            <div className="desktop-shop-card-title">结果</div>
+            <div className="desktop-shop-results-list" style={{ marginTop: 0 }}>
+              {!selected && <div className="desktop-empty-inline">请选择左侧文件后查看结果</div>}
+              {selected && loadingItems && <div className="desktop-empty-inline">加载中...</div>}
+              {selected &&
+                !loadingItems &&
+                items.map((item, idx) => {
+                  const analysis = item?.ai_analysis || {};
+                  const recommended = Boolean(analysis.is_recommended);
+                  const link = getProductLink(item);
+                  const image = buildImageUrl(getProductImage(item));
+                  return (
+                    <div className={`desktop-shop-result-card ${recommended ? "recommended" : ""}`} key={`${item?.["商品信息"]?.["商品ID"] || idx}`}>
+                      <div className="desktop-shop-result-head">
+                        <div className="desktop-shop-result-left">
+                          {image ? (
+                            <img
+                              className="desktop-shop-result-thumb"
+                              src={image}
+                              alt={getProductTitle(item)}
+                              loading="lazy"
+                              onClick={() => window.open(image, "_blank", "noopener,noreferrer")}
+                              style={{ cursor: "pointer" }}
+                            />
+                          ) : (
+                            <div className="desktop-shop-result-thumb desktop-shop-result-thumb-empty">暂无图片</div>
+                          )}
+                          <div className="desktop-shop-result-head-text">
+                            <div className="desktop-shop-result-title">{getProductTitle(item)}</div>
+                            <div className="desktop-shop-result-meta">
+                              <span>任务：{item?.["任务名称"] || "-"}</span>
+                              <span>关键字：{item?.["搜索关键字"] || "-"}</span>
+                              <span>爬取：{formatDateTime(item?.["爬取时间"])}</span>
+                              <span>发布：{formatDateTime(item?.["商品信息"]?.["发布时间"])}</span>
+                            </div>
                           </div>
                         </div>
+                        <div className="desktop-shop-result-price">{getProductPrice(item)}</div>
                       </div>
-                      <div className="desktop-shop-result-price">{getProductPrice(item)}</div>
+                      <div className="desktop-shop-result-reason">
+                        <span className={`desktop-shop-pill ${recommended ? "running" : ""}`}>{recommended ? "推荐" : "不推荐"}</span>
+                        <span className="desktop-shop-result-reason-text">{analysis.reason || "-"}</span>
+                      </div>
+                      <div className="desktop-shop-result-actions">
+                        <button className="desktop-action-btn" onClick={() => link && window.open(link, "_blank", "noopener,noreferrer")} disabled={!link}>
+                          打开链接
+                        </button>
+                        {analysis.keyword_hit_count !== undefined && analysis.keyword_hit_count !== null && (
+                          <span className="desktop-shop-badge">命中 {analysis.keyword_hit_count}</span>
+                        )}
+                        {analysis.analysis_source && <span className="desktop-shop-badge">{analysis.analysis_source === "ai" ? "AI" : "关键词"}</span>}
+                        {analysis.value_score !== undefined && analysis.value_score !== null && <span className="desktop-shop-badge">价值 {analysis.value_score}</span>}
+                      </div>
                     </div>
-                    <div className="desktop-shop-result-reason">
-                      <span className={`desktop-shop-pill ${recommended ? "running" : ""}`}>{recommended ? "推荐" : "不推荐"}</span>
-                      <span className="desktop-shop-result-reason-text">{analysis.reason || "-"}</span>
-                    </div>
-                    <div className="desktop-shop-result-actions">
-                      <button className="desktop-action-btn" onClick={() => link && window.open(link, "_blank", "noopener,noreferrer")} disabled={!link}>
-                        打开链接
-                      </button>
-                      {analysis.keyword_hit_count !== undefined && analysis.keyword_hit_count !== null && (
-                        <span className="desktop-shop-badge">命中 {analysis.keyword_hit_count}</span>
-                      )}
-                      {analysis.analysis_source && <span className="desktop-shop-badge">{analysis.analysis_source === "ai" ? "AI" : "关键词"}</span>}
-                      {analysis.value_score !== undefined && analysis.value_score !== null && <span className="desktop-shop-badge">价值 {analysis.value_score}</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            {!loadingItems && items.length === 0 && <div className="desktop-empty-inline">暂无结果</div>}
+                  );
+                })}
+              {selected && !loadingItems && items.length === 0 && <div className="desktop-empty-inline">暂无结果</div>}
+            </div>
           </div>
         </div>
       </div>
@@ -906,56 +1044,47 @@ function FishLogs() {
     <div className="desktop-shop-section">
       <div className="desktop-shop-toolbar-row">
         <div className="desktop-panel-title">日志</div>
-        <button className="desktop-action-btn" onClick={() => loadTailAt(0)} disabled={loading || !taskId}>
-          {loading ? "加载中..." : "刷新"}
-        </button>
+        <div className="desktop-shop-toolbar-actions">
+          <button className="desktop-action-btn" onClick={() => loadTailAt(0)} disabled={loading || !taskId}>
+            {loading ? "加载中..." : "刷新到最新"}
+          </button>
+          <button className="desktop-action-btn" onClick={() => loadTailAt(Math.max(0, offsetLines - limitLines))} disabled={offsetLines <= 0 || loading || !taskId}>
+            上一页
+          </button>
+          <button className="desktop-action-btn" onClick={() => loadTailAt(nextOffset)} disabled={!hasMore || loading || !taskId}>
+            下一页
+          </button>
+          <button
+            className="desktop-action-btn"
+            onClick={() => taskId && window.open(fishApi.buildTaskLogDownloadUrl(Number(taskId)), "_blank", "noopener,noreferrer")}
+            disabled={!taskId}
+          >
+            下载全部
+          </button>
+          <button className="desktop-action-btn warning" onClick={clear} disabled={!taskId || loading}>
+            清空日志
+          </button>
+        </div>
       </div>
 
       {error && <div className="notice desktop-notice">接口异常：{error}</div>}
 
       <div className="desktop-shop-card desktop-shop-log-card">
         <div className="desktop-shop-log-controls">
-          <div className="desktop-shop-log-field">
-            <div className="desktop-shop-form-label">选择任务</div>
-            <select
-              className="form-select desktop-shop-log-select"
-              value={taskId}
-              onChange={(e) => setTaskId(e.target.value)}
-              disabled={tasks.length === 0}
-            >
-              {tasks.map((t) => (
-                <option value={t.id} key={t.id}>
-                  {t.task_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="desktop-shop-log-actions">
-            <button className="desktop-action-btn" onClick={() => loadTailAt(0)} disabled={loading || !taskId}>
-              {loading ? "加载中..." : "刷新到最新"}
-            </button>
-            <button className="desktop-action-btn warning" onClick={clear} disabled={!taskId}>
-              清空日志
-            </button>
+          <select className="form-select desktop-shop-log-select" value={taskId} onChange={(e) => setTaskId(e.target.value)} disabled={tasks.length === 0}>
+            {tasks.map((t) => (
+              <option value={t.id} key={t.id}>
+                {t.task_name}
+              </option>
+            ))}
+          </select>
+          <div className="desktop-shop-pagination-text">
+            {taskId ? `已向上翻 ${offsetLines} 行 · 每页 ${limitLines} 行` : "请选择任务后查看日志"}
           </div>
         </div>
 
         <div className="desktop-shop-log">
           <pre className="desktop-shop-log-pre">{content || "暂无日志"}</pre>
-        </div>
-
-        <div className="desktop-shop-log-footer">
-          <div className="desktop-shop-pagination-text">
-            已向上翻 {offsetLines} 行 · 每页 {limitLines} 行
-          </div>
-          <div className="desktop-action-group">
-            <button className="desktop-action-btn" onClick={() => loadTailAt(Math.max(0, offsetLines - limitLines))} disabled={offsetLines <= 0}>
-              更新（更近）
-            </button>
-            <button className="desktop-action-btn" onClick={() => loadTailAt(nextOffset)} disabled={!hasMore}>
-              更早
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -965,6 +1094,7 @@ function FishLogs() {
 function FishSettings() {
   const [status, setStatus] = useState(null);
   const [ai, setAi] = useState(null);
+  const [aiKeyMasked, setAiKeyMasked] = useState("");
   const [aiKeySet, setAiKeySet] = useState(false);
   const [aiForm, setAiForm] = useState({ OPENAI_API_KEY: "", OPENAI_BASE_URL: "", OPENAI_MODEL_NAME: "", PROXY_URL: "" });
   const [error, setError] = useState("");
@@ -978,9 +1108,10 @@ function FishSettings() {
     try {
       const s = await fishApi.getSystemStatus();
       setStatus(s);
-      setAiKeySet(Boolean(s?.env_file?.openai_api_key_set));
       const a = await fishApi.getAiSettings();
       setAi(a);
+      setAiKeyMasked(a?.OPENAI_API_KEY_MASKED || "");
+      setAiKeySet(Boolean(a?.OPENAI_API_KEY_SET));
       setAiForm({
         OPENAI_API_KEY: "",
         OPENAI_BASE_URL: a?.OPENAI_BASE_URL || "",
@@ -1100,9 +1231,8 @@ function FishSettings() {
               className="form-input"
               value={aiForm.OPENAI_API_KEY}
               onChange={(e) => setAiForm((p) => ({ ...p, OPENAI_API_KEY: e.target.value }))}
-              placeholder={aiKeySet ? "已配置（如需更新请重新填写）" : "未配置"}
+              placeholder={aiKeySet ? `已配置：${aiKeyMasked || "已隐藏"}` : "未配置"}
             />
-            <div className="desktop-shop-form-label">{aiKeySet ? "后端出于安全不会回传 Key；留空表示保持不变。" : "当前未配置 Key；填写后保存即可生效。"}</div>
           </div>
           <div className="desktop-shop-form-field">
             <div className="desktop-shop-form-label">OPENAI_BASE_URL</div>
@@ -1196,6 +1326,12 @@ function FishAccounts() {
 
   const [createName, setCreateName] = useState("");
   const [createContent, setCreateContent] = useState("");
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerTitle, setViewerTitle] = useState("");
+  const [viewerContent, setViewerContent] = useState("");
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorTitle, setEditorTitle] = useState("");
+  const [editorContent, setEditorContent] = useState("");
 
   async function refresh() {
     setLoading(true);
@@ -1330,21 +1466,89 @@ function FishAccounts() {
                 <div className="desktop-shop-account-title">{detail.name}</div>
                 <div className="desktop-shop-account-path">{detail.path}</div>
               </div>
-              <textarea
-                className="form-textarea"
-                rows={12}
-                value={detail.content || ""}
-                onChange={(e) => setDetail((p) => ({ ...p, content: e.target.value }))}
-              />
+              <pre className="fish-account-preview">{(detail.content || "").slice(0, 900) || "暂无内容"}</pre>
               <div className="desktop-shop-form-actions">
-                <button className="desktop-primary-btn" onClick={save} disabled={loading}>
-                  保存
+                <button
+                  className="desktop-action-btn"
+                  onClick={() => {
+                    setViewerTitle(detail.name || "账号详情");
+                    setViewerContent(detail.content || "");
+                    setViewerOpen(true);
+                  }}
+                >
+                  查看详情
+                </button>
+                <button
+                  className="desktop-primary-btn"
+                  onClick={() => {
+                    setEditorTitle(detail.name || "编辑账号");
+                    setEditorContent(detail.content || "");
+                    setEditorOpen(true);
+                  }}
+                  disabled={loading}
+                >
+                  编辑
                 </button>
               </div>
             </>
           )}
         </div>
       </div>
+
+      {viewerOpen && (
+        <div className="dialog-overlay" onClick={() => setViewerOpen(false)}>
+          <div className="dialog-content fish-viewer-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="dialog-header">
+              <h3 className="dialog-title">{viewerTitle || "详情"}</h3>
+            </div>
+            <pre className="fish-viewer-pre">{viewerContent || "暂无内容"}</pre>
+            <div className="dialog-actions">
+              <button className="dialog-btn primary" onClick={() => setViewerOpen(false)}>
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editorOpen && (
+        <div className="dialog-overlay" onClick={() => setEditorOpen(false)}>
+          <div className="dialog-content fish-viewer-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="dialog-header">
+              <h3 className="dialog-title">{editorTitle || "编辑"}</h3>
+            </div>
+            <textarea className="form-textarea" rows={14} value={editorContent} onChange={(e) => setEditorContent(e.target.value)} />
+            <div className="dialog-actions">
+              <button className="dialog-btn" onClick={() => setEditorOpen(false)}>
+                取消
+              </button>
+              <button
+                className="dialog-btn primary"
+                onClick={async () => {
+                  if (!detail?.name) return;
+                  setError("");
+                  setMessage("");
+                  setLoading(true);
+                  try {
+                    await fishApi.updateAccount(detail.name, editorContent || "");
+                    setMessage("已保存");
+                    setEditorOpen(false);
+                    loadDetail(detail.name);
+                    refresh();
+                  } catch (e) {
+                    setError(e.message || "保存失败");
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="desktop-shop-card">
         <div className="desktop-shop-card-title">新建账号</div>

@@ -620,7 +620,7 @@ function AppContent() {
           </div>
         </aside>
 
-        <main className={`desktop-main ${desktopTab === "value" ? "desktop-main-scroll" : ""}`}>
+        <main className={`desktop-main ${desktopTab === "value" ? "desktop-main-scroll" : ""} ${desktopTab === "shop" ? "desktop-main-tight" : ""}`}>
           <header className="desktop-header">
             <div>
               <h2 className="desktop-title">

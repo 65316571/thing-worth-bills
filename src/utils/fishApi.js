@@ -205,6 +205,10 @@ export const fishApi = {
     );
   },
 
+  buildTaskLogDownloadUrl(taskId) {
+    return withQuery(`${FISH_API_PREFIX}/logs/file`, { task_id: taskId });
+  },
+
   clearLogs(taskId) {
     return fishRequest(withQuery(`${FISH_API_PREFIX}/logs`, taskId ? { task_id: taskId } : {}), { method: "DELETE" });
   },

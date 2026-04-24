@@ -43,6 +43,15 @@ AI_TEST_PROMPT = "Reply with OK only."
 AI_TEST_MAX_OUTPUT_TOKENS = 32
 
 
+def _mask_secret(value: str) -> str:
+    raw = str(value or "")
+    if not raw:
+        return ""
+    if len(raw) <= 8:
+        return "*" * len(raw)
+    return f"{raw[:3]}...{raw[-4:]}"
+
+
 def _reload_env() -> None:
     load_dotenv(dotenv_path=env_manager.env_file, override=True)
     reload_settings()
@@ -254,7 +263,10 @@ async def get_system_status(
 
 @router.get("/ai")
 async def get_ai_settings():
+    openai_api_key = env_manager.get_value("OPENAI_API_KEY", "")
     return {
+        "OPENAI_API_KEY_SET": bool(openai_api_key),
+        "OPENAI_API_KEY_MASKED": _mask_secret(openai_api_key),
         "OPENAI_BASE_URL": env_manager.get_value("OPENAI_BASE_URL", ""),
         "OPENAI_MODEL_NAME": env_manager.get_value("OPENAI_MODEL_NAME", ""),
         "SKIP_AI_ANALYSIS": env_manager.get_value("SKIP_AI_ANALYSIS", "false").lower() == "true",

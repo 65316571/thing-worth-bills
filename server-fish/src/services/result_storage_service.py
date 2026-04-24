@@ -45,6 +45,7 @@ def _build_query_conditions(
     recommended_only: bool,
     ai_recommended_only: bool,
     keyword_recommended_only: bool,
+    query_text: str,
 ) -> tuple[str, list]:
     conditions = ["result_filename = ?"]
     params: list = [filename]
@@ -58,6 +59,21 @@ def _build_query_conditions(
         conditions.append("is_recommended = 1")
         conditions.append("analysis_source = ?")
         params.append("keyword")
+    query = str(query_text or "").strip()
+    if query:
+        tokens = [part for part in query.split() if part]
+        for token in tokens:
+            like = f"%{token}%"
+            conditions.append(
+                "("
+                "title LIKE ? OR "
+                "keyword LIKE ? OR "
+                "task_name LIKE ? OR "
+                "seller_nickname LIKE ? OR "
+                "link LIKE ?"
+                ")"
+            )
+            params.extend([like, like, like, like, like])
     return " AND ".join(conditions), params
 
 
@@ -179,6 +195,7 @@ async def query_result_records(
     recommended_only: bool,
     ai_recommended_only: bool,
     keyword_recommended_only: bool,
+    query_text: str,
     sort_by: str,
     sort_order: str,
     page: int,
@@ -190,6 +207,7 @@ async def query_result_records(
         recommended_only,
         ai_recommended_only,
         keyword_recommended_only,
+        query_text,
         sort_by,
         sort_order,
         page,
@@ -202,6 +220,7 @@ def _query_result_records_sync(
     recommended_only: bool,
     ai_recommended_only: bool,
     keyword_recommended_only: bool,
+    query_text: str,
     sort_by: str,
     sort_order: str,
     page: int,
@@ -213,6 +232,7 @@ def _query_result_records_sync(
         recommended_only=recommended_only,
         ai_recommended_only=ai_recommended_only,
         keyword_recommended_only=keyword_recommended_only,
+        query_text=query_text,
     )
     offset = max(page - 1, 0) * limit
     order_clause = _sort_expression(sort_by, sort_order)
@@ -241,6 +261,7 @@ async def load_all_result_records(
     recommended_only: bool,
     ai_recommended_only: bool,
     keyword_recommended_only: bool,
+    query_text: str,
     sort_by: str,
     sort_order: str,
 ) -> list[dict]:
@@ -250,6 +271,7 @@ async def load_all_result_records(
         recommended_only,
         ai_recommended_only,
         keyword_recommended_only,
+        query_text,
         sort_by,
         sort_order,
     )
@@ -260,6 +282,7 @@ def _load_all_result_records_sync(
     recommended_only: bool,
     ai_recommended_only: bool,
     keyword_recommended_only: bool,
+    query_text: str,
     sort_by: str,
     sort_order: str,
 ) -> list[dict]:
@@ -269,6 +292,7 @@ def _load_all_result_records_sync(
         recommended_only=recommended_only,
         ai_recommended_only=ai_recommended_only,
         keyword_recommended_only=keyword_recommended_only,
+        query_text=query_text,
     )
     order_clause = _sort_expression(sort_by, sort_order)
     with sqlite_connection() as conn:
@@ -290,6 +314,7 @@ async def build_result_ndjson(filename: str) -> str:
         recommended_only=False,
         ai_recommended_only=False,
         keyword_recommended_only=False,
+        query_text="",
         sort_by="crawl_time",
         sort_order="asc",
     )

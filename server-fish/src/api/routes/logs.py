@@ -4,7 +4,8 @@
 import os
 from typing import Optional, Tuple, List
 import aiofiles
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from fastapi.responses import JSONResponse
 from src.api.dependencies import get_task_service
 from src.services.task_service import TaskService
@@ -159,6 +160,24 @@ async def get_logs_tail(
                 "new_pos": 0
             }
         )
+
+
+@router.get("/file")
+async def download_task_log_file(
+    task_id: Optional[int] = Query(default=None, ge=0),
+    task_service: TaskService = Depends(get_task_service),
+):
+    if task_id is None:
+        raise HTTPException(status_code=400, detail="未指定任务")
+    task = await task_service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在或已删除")
+    log_file_path = resolve_task_log_path(task_id, task.task_name)
+    if not os.path.exists(log_file_path):
+        raise HTTPException(status_code=404, detail="日志文件不存在")
+    safe_name = os.path.basename(log_file_path)
+    headers = {"Content-Disposition": f'attachment; filename="{safe_name}"'}
+    return FileResponse(log_file_path, media_type="text/plain; charset=utf-8", headers=headers)
 
 
 @router.delete("", response_model=dict)

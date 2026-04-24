@@ -80,6 +80,7 @@ async def get_result_file_content(
     recommended_only: bool = Query(False),
     ai_recommended_only: bool = Query(False),
     keyword_recommended_only: bool = Query(False),
+    q: str = Query("", max_length=200),
     sort_by: str = Query("crawl_time"),
     sort_order: str = Query("desc"),
 ):
@@ -94,6 +95,7 @@ async def get_result_file_content(
             recommended_only=recommended_only,
             ai_recommended_only=ai_recommended_only,
             keyword_recommended_only=keyword_recommended_only,
+            query_text=q,
             sort_by=sort_by,
             sort_order=sort_order,
             page=page,
@@ -131,6 +133,7 @@ async def export_result_file_content(
     recommended_only: bool = Query(False),
     ai_recommended_only: bool = Query(False),
     keyword_recommended_only: bool = Query(False),
+    q: str = Query("", max_length=200),
     sort_by: str = Query("crawl_time"),
     sort_order: str = Query("desc"),
 ):
@@ -144,6 +147,7 @@ async def export_result_file_content(
             recommended_only=recommended_only,
             ai_recommended_only=ai_recommended_only,
             keyword_recommended_only=keyword_recommended_only,
+            query_text=q,
             sort_by=sort_by,
             sort_order=sort_order,
         )
