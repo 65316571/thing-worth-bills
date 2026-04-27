@@ -13,6 +13,7 @@ from openai import APIStatusError
 from requests.exceptions import HTTPError
 
 from src.services.result_storage_service import save_result_record
+from src.config import get_rate_limit_multiplier, BANDWIDTH_MODE
 
 
 def retry_on_failure(retries=3, delay=5):
@@ -59,9 +60,13 @@ async def safe_get(data, *keys, default="暂无"):
 
 
 async def random_sleep(min_seconds: float, max_seconds: float):
-    """异步等待一个在指定范围内的随机时间。"""
-    delay = random.uniform(min_seconds, max_seconds)
-    print(f"   [延迟] 等待 {delay:.2f} 秒... (范围: {min_seconds}-{max_seconds}s)")
+    """异步等待一个在指定范围内的随机时间，受带宽限速配置影响。"""
+    multiplier = get_rate_limit_multiplier()
+    adjusted_min = min_seconds * multiplier
+    adjusted_max = max_seconds * multiplier
+    delay = random.uniform(adjusted_min, adjusted_max)
+    mode_hint = f" [模式: {BANDWIDTH_MODE}]" if multiplier != 1.0 else ""
+    print(f"   [延迟] 等待 {delay:.2f} 秒... (原始: {min_seconds}-{max_seconds}s, 倍数: {multiplier:.1f}x){mode_hint}")
     await asyncio.sleep(delay)
 
 

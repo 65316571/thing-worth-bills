@@ -982,6 +982,7 @@ function FishLogs() {
   const [hasMore, setHasMore] = useState(false);
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const limitLines = 160;
 
@@ -1015,17 +1016,22 @@ function FishLogs() {
     }
   }
 
-  async function clear() {
+  async function handleClearLogs() {
     if (!taskId) return;
     setError("");
+    setMessage("");
+    setLoading(true);
     try {
       await fishApi.clearLogs(Number(taskId));
       setOffsetLines(0);
       setNextOffset(0);
+      setHasMore(false);
       setContent("");
-      loadTailAt(0);
+      setMessage("日志已清空");
     } catch (e) {
       setError(e.message || "清空失败");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -1061,13 +1067,14 @@ function FishLogs() {
           >
             下载全部
           </button>
-          <button className="desktop-action-btn warning" onClick={clear} disabled={!taskId || loading}>
+          <button className="desktop-action-btn warning" onClick={handleClearLogs} disabled={!taskId || loading}>
             清空日志
           </button>
         </div>
       </div>
 
       {error && <div className="notice desktop-notice">接口异常：{error}</div>}
+      {message && <div className="notice desktop-notice">{message}</div>}
 
       <div className="desktop-shop-card desktop-shop-log-card">
         <div className="desktop-shop-log-controls">
@@ -1097,6 +1104,11 @@ function FishSettings() {
   const [aiKeyMasked, setAiKeyMasked] = useState("");
   const [aiKeySet, setAiKeySet] = useState(false);
   const [aiForm, setAiForm] = useState({ OPENAI_API_KEY: "", OPENAI_BASE_URL: "", OPENAI_MODEL_NAME: "", PROXY_URL: "" });
+  const [bandwidth, setBandwidth] = useState({ BANDWIDTH_MODE: "normal", RATE_LIMIT_MULTIPLIER: "" });
+  const [notifications, setNotifications] = useState({
+    FEISHU_WEBHOOK_URL: "", FEISHU_SECRET: "",
+    SMTP_HOST: "", SMTP_PORT: "", SMTP_USERNAME: "", SMTP_PASSWORD: "", SMTP_SENDER: "", SMTP_RECIPIENT: "", SMTP_USE_TLS: true,
+  });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1106,9 +1118,13 @@ function FishSettings() {
     setError("");
     setMessage("");
     try {
-      const s = await fishApi.getSystemStatus();
+      const [s, a, b, n] = await Promise.all([
+        fishApi.getSystemStatus(),
+        fishApi.getAiSettings(),
+        fishApi.getBandwidthSettings(),
+        fishApi.getNotificationSettings(),
+      ]);
       setStatus(s);
-      const a = await fishApi.getAiSettings();
       setAi(a);
       setAiKeyMasked(a?.OPENAI_API_KEY_MASKED || "");
       setAiKeySet(Boolean(a?.OPENAI_API_KEY_SET));
@@ -1117,6 +1133,21 @@ function FishSettings() {
         OPENAI_BASE_URL: a?.OPENAI_BASE_URL || "",
         OPENAI_MODEL_NAME: a?.OPENAI_MODEL_NAME || "",
         PROXY_URL: a?.PROXY_URL || "",
+      });
+      setBandwidth({
+        BANDWIDTH_MODE: b?.BANDWIDTH_MODE || "normal",
+        RATE_LIMIT_MULTIPLIER: b?.RATE_LIMIT_MULTIPLIER || "",
+      });
+      setNotifications({
+        FEISHU_WEBHOOK_URL: n?.FEISHU_WEBHOOK_URL || "",
+        FEISHU_SECRET: n?.FEISHU_SECRET || "",
+        SMTP_HOST: n?.SMTP_HOST || "",
+        SMTP_PORT: n?.SMTP_PORT || "",
+        SMTP_USERNAME: n?.SMTP_USERNAME || "",
+        SMTP_PASSWORD: n?.SMTP_PASSWORD || "",
+        SMTP_SENDER: n?.SMTP_SENDER || "",
+        SMTP_RECIPIENT: n?.SMTP_RECIPIENT || "",
+        SMTP_USE_TLS: n?.SMTP_USE_TLS !== false,
       });
     } catch (e) {
       setError(e.message || "加载失败");
@@ -1162,6 +1193,53 @@ function FishSettings() {
     }
   }
 
+  async function saveBandwidth() {
+    setError("");
+    setMessage("");
+    try {
+      await fishApi.updateBandwidthSettings({
+        BANDWIDTH_MODE: bandwidth.BANDWIDTH_MODE || null,
+        RATE_LIMIT_MULTIPLIER: bandwidth.RATE_LIMIT_MULTIPLIER || null,
+      });
+      setMessage("带宽设置已保存");
+    } catch (e) {
+      setError(e.message || "保存失败");
+    }
+  }
+
+  async function saveNotifications() {
+    setError("");
+    setMessage("");
+    try {
+      const payload = {};
+      Object.entries(notifications).forEach(([k, v]) => {
+        if (v !== "" && v !== null && v !== undefined) payload[k] = v;
+      });
+      await fishApi.updateNotificationSettings(payload);
+      setMessage("通知设置已保存");
+    } catch (e) {
+      setError(e.message || "保存失败");
+    }
+  }
+
+  async function testNotification(channel) {
+    setError("");
+    setMessage("");
+    try {
+      const data = await fishApi.testNotificationSettings({ channel, settings: notifications });
+      const results = Object.values(data?.results || {});
+      const success = results.filter((r) => r?.success);
+      const fail = results.filter((r) => !r?.success);
+      if (fail.length === 0) {
+        setMessage(`测试通知发送成功 (${success.length}/${results.length})`);
+      } else {
+        setError(`测试通知部分失败: ${fail.map((r) => `${r.label}: ${r.message}`).join("; ")}`);
+      }
+    } catch (e) {
+      setError(e.message || "测试失败");
+    }
+  }
+
   const loginState = status?.login_state_file;
   const envFile = status?.env_file;
 
@@ -1177,49 +1255,38 @@ function FishSettings() {
       {error && <div className="notice desktop-notice">接口异常：{error}</div>}
       {message && <div className="notice desktop-notice">{message}</div>}
 
-      <div className="desktop-shop-split desktop-shop-split-tight">
-        <div className="desktop-shop-card">
-          <div className="desktop-shop-card-title">系统状态</div>
-          <div className="desktop-shop-kv-grid desktop-shop-kv-grid-tight">
-            <div className="desktop-shop-kv">
-              <div className="desktop-shop-kv-label">爬虫运行</div>
-              <div className="desktop-shop-kv-value">{status?.scraper_running ? "是" : "否"}</div>
-            </div>
-            <div className="desktop-shop-kv">
-              <div className="desktop-shop-kv-label">AI 已配置</div>
-              <div className="desktop-shop-kv-value">{status?.ai_configured ? "是" : "否"}</div>
-            </div>
-            <div className="desktop-shop-kv">
-              <div className="desktop-shop-kv-label">通知已配置</div>
-              <div className="desktop-shop-kv-value">{status?.notification_configured ? "是" : "否"}</div>
-            </div>
-            <div className="desktop-shop-kv">
-              <div className="desktop-shop-kv-label">无头模式</div>
-              <div className="desktop-shop-kv-value">{status?.headless_mode ? "是" : "否"}</div>
-            </div>
+      <div className="desktop-shop-card">
+        <div className="desktop-shop-card-title">系统状态</div>
+        <div className="desktop-shop-kv-grid desktop-shop-kv-grid-tight">
+          <div className="desktop-shop-kv">
+            <div className="desktop-shop-kv-label">爬虫运行</div>
+            <div className="desktop-shop-kv-value">{status?.scraper_running ? "是" : "否"}</div>
           </div>
-
-          <div className="desktop-shop-kv-grid desktop-shop-kv-grid-tight">
-            <div className="desktop-shop-kv">
-              <div className="desktop-shop-kv-label">登录态文件</div>
-              <div className="desktop-shop-kv-value">{loginState?.exists ? "存在" : "不存在"}</div>
-            </div>
-            <div className="desktop-shop-kv">
-              <div className="desktop-shop-kv-label">路径</div>
-              <div className="desktop-shop-kv-value">{loginState?.path || "-"}</div>
-            </div>
-            <div className="desktop-shop-kv">
-              <div className="desktop-shop-kv-label">.env</div>
-              <div className="desktop-shop-kv-value">{envFile?.exists ? "存在" : "不存在"}</div>
-            </div>
-            <div className="desktop-shop-kv">
-              <div className="desktop-shop-kv-label">Key 已设置</div>
-              <div className="desktop-shop-kv-value">{envFile?.openai_api_key_set ? "是" : "否"}</div>
-            </div>
+          <div className="desktop-shop-kv">
+            <div className="desktop-shop-kv-label">AI 已配置</div>
+            <div className="desktop-shop-kv-value">{status?.ai_configured ? "是" : "否"}</div>
+          </div>
+          <div className="desktop-shop-kv">
+            <div className="desktop-shop-kv-label">通知已配置</div>
+            <div className="desktop-shop-kv-value">{status?.notification_configured ? "是" : "否"}</div>
+          </div>
+          <div className="desktop-shop-kv">
+            <div className="desktop-shop-kv-label">无头模式</div>
+            <div className="desktop-shop-kv-value">{status?.headless_mode ? "是" : "否"}</div>
+          </div>
+          <div className="desktop-shop-kv">
+            <div className="desktop-shop-kv-label">登录态文件</div>
+            <div className="desktop-shop-kv-value">{loginState?.exists ? "存在" : "不存在"}</div>
+          </div>
+          <div className="desktop-shop-kv">
+            <div className="desktop-shop-kv-label">.env</div>
+            <div className="desktop-shop-kv-value">{envFile?.exists ? "存在" : "不存在"}</div>
+          </div>
+          <div className="desktop-shop-kv">
+            <div className="desktop-shop-kv-label">Key 已设置</div>
+            <div className="desktop-shop-kv-value">{envFile?.openai_api_key_set ? "是" : "否"}</div>
           </div>
         </div>
-
-        <FishLoginStateCard onDone={refresh} />
       </div>
 
       <div className="desktop-shop-card">
@@ -1257,60 +1324,158 @@ function FishSettings() {
           </button>
         </div>
       </div>
-    </div>
-  );
-}
 
-function FishLoginStateCard({ onDone }) {
-  const [content, setContent] = useState("");
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+      <div className="desktop-shop-card">
+        <div className="desktop-shop-card-title">带宽限速</div>
+        <div className="desktop-shop-form-grid desktop-shop-form-grid-2">
+          <div className="desktop-shop-form-field">
+            <div className="desktop-shop-form-label">限速模式</div>
+            <select
+              className="form-select"
+              value={bandwidth.BANDWIDTH_MODE}
+              onChange={(e) => setBandwidth((p) => ({ ...p, BANDWIDTH_MODE: e.target.value }))}
+            >
+              <option value="normal">正常 (1.0x)</option>
+              <option value="economy">经济/白天限速 (2.0x)</option>
+              <option value="aggressive">激进/夜间加速 (0.6x)</option>
+            </select>
+          </div>
+          <div className="desktop-shop-form-field">
+            <div className="desktop-shop-form-label">自定义倍数（留空使用模式预设）</div>
+            <input
+              className="form-input"
+              type="number"
+              step="0.1"
+              min="0.1"
+              value={bandwidth.RATE_LIMIT_MULTIPLIER}
+              onChange={(e) => setBandwidth((p) => ({ ...p, RATE_LIMIT_MULTIPLIER: e.target.value }))}
+              placeholder="例如：2.5"
+            />
+          </div>
+        </div>
+        <div className="desktop-shop-form-actions">
+          <button className="desktop-primary-btn" onClick={saveBandwidth}>
+            保存带宽设置
+          </button>
+        </div>
+      </div>
 
-  async function save() {
-    setLoading(true);
-    setError("");
-    setMessage("");
-    try {
-      const data = await fishApi.updateLoginState(content);
-      setMessage(data?.message || "已保存");
-      setContent("");
-      onDone?.();
-    } catch (e) {
-      setError(e.message || "保存失败");
-    } finally {
-      setLoading(false);
-    }
-  }
+      <div className="desktop-shop-card">
+        <div className="desktop-shop-card-title">通知渠道</div>
 
-  async function remove() {
-    setLoading(true);
-    setError("");
-    setMessage("");
-    try {
-      const data = await fishApi.deleteLoginState();
-      setMessage(data?.message || "已删除");
-      onDone?.();
-    } catch (e) {
-      setError(e.message || "删除失败");
-    } finally {
-      setLoading(false);
-    }
-  }
+        <div className="desktop-shop-card" style={{ marginBottom: 16, background: "var(--bg-1)" }}>
+          <div className="desktop-shop-card-title" style={{ fontSize: 14 }}>飞书机器人</div>
+          <div className="desktop-shop-form-grid desktop-shop-form-grid-2">
+            <div className="desktop-shop-form-field">
+              <div className="desktop-shop-form-label">Webhook 地址</div>
+              <input
+                className="form-input"
+                value={notifications.FEISHU_WEBHOOK_URL}
+                onChange={(e) => setNotifications((p) => ({ ...p, FEISHU_WEBHOOK_URL: e.target.value }))}
+                placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..."
+              />
+            </div>
+            <div className="desktop-shop-form-field">
+              <div className="desktop-shop-form-label">Secret（可选）</div>
+              <input
+                className="form-input"
+                type="password"
+                value={notifications.FEISHU_SECRET}
+                onChange={(e) => setNotifications((p) => ({ ...p, FEISHU_SECRET: e.target.value }))}
+                placeholder="启用了签名校验时填写"
+              />
+            </div>
+          </div>
+          <div className="desktop-shop-form-actions">
+            <button className="desktop-action-btn" onClick={() => testNotification("feishu")}>
+              测试飞书
+            </button>
+          </div>
+        </div>
 
-  return (
-    <div className="desktop-shop-card">
-      <div className="desktop-shop-card-title">登录态（xianyu_state.json）</div>
-      {error && <div className="notice desktop-notice">接口异常：{error}</div>}
-      {message && <div className="notice desktop-notice">{message}</div>}
-      <textarea className="form-textarea" rows={10} value={content} onChange={(e) => setContent(e.target.value)} placeholder="粘贴 xianyu_state.json 内容（JSON 文本）" />
-      <div className="desktop-shop-form-actions">
-        <button className="desktop-action-btn warning" onClick={remove} disabled={loading}>
-          删除
-        </button>
-        <button className="desktop-primary-btn" onClick={save} disabled={loading || !content.trim()}>
-          {loading ? "保存中..." : "保存"}
-        </button>
+        <div className="desktop-shop-card" style={{ background: "var(--bg-1)" }}>
+          <div className="desktop-shop-card-title" style={{ fontSize: 14 }}>SMTP 邮件</div>
+          <div className="desktop-shop-form-grid desktop-shop-form-grid-2">
+            <div className="desktop-shop-form-field">
+              <div className="desktop-shop-form-label">SMTP 服务器</div>
+              <input
+                className="form-input"
+                value={notifications.SMTP_HOST}
+                onChange={(e) => setNotifications((p) => ({ ...p, SMTP_HOST: e.target.value }))}
+                placeholder="例如：smtp.qq.com"
+              />
+            </div>
+            <div className="desktop-shop-form-field">
+              <div className="desktop-shop-form-label">端口</div>
+              <input
+                className="form-input"
+                type="number"
+                value={notifications.SMTP_PORT}
+                onChange={(e) => setNotifications((p) => ({ ...p, SMTP_PORT: e.target.value }))}
+                placeholder="例如：587"
+              />
+            </div>
+            <div className="desktop-shop-form-field">
+              <div className="desktop-shop-form-label">用户名</div>
+              <input
+                className="form-input"
+                value={notifications.SMTP_USERNAME}
+                onChange={(e) => setNotifications((p) => ({ ...p, SMTP_USERNAME: e.target.value }))}
+                placeholder="例如：yourname@qq.com"
+              />
+            </div>
+            <div className="desktop-shop-form-field">
+              <div className="desktop-shop-form-label">密码 / 授权码</div>
+              <input
+                className="form-input"
+                type="password"
+                value={notifications.SMTP_PASSWORD}
+                onChange={(e) => setNotifications((p) => ({ ...p, SMTP_PASSWORD: e.target.value }))}
+                placeholder="邮箱授权码"
+              />
+            </div>
+            <div className="desktop-shop-form-field">
+              <div className="desktop-shop-form-label">发件人</div>
+              <input
+                className="form-input"
+                value={notifications.SMTP_SENDER}
+                onChange={(e) => setNotifications((p) => ({ ...p, SMTP_SENDER: e.target.value }))}
+                placeholder="例如：yourname@qq.com"
+              />
+            </div>
+            <div className="desktop-shop-form-field">
+              <div className="desktop-shop-form-label">收件人</div>
+              <input
+                className="form-input"
+                value={notifications.SMTP_RECIPIENT}
+                onChange={(e) => setNotifications((p) => ({ ...p, SMTP_RECIPIENT: e.target.value }))}
+                placeholder="例如：yourname@gmail.com"
+              />
+            </div>
+            <div className="desktop-shop-form-field">
+              <div className="desktop-shop-form-label">使用 TLS</div>
+              <select
+                className="form-select"
+                value={notifications.SMTP_USE_TLS ? "true" : "false"}
+                onChange={(e) => setNotifications((p) => ({ ...p, SMTP_USE_TLS: e.target.value === "true" }))}
+              >
+                <option value="true">是</option>
+                <option value="false">否</option>
+              </select>
+            </div>
+          </div>
+          <div className="desktop-shop-form-actions">
+            <button className="desktop-action-btn" onClick={() => testNotification("smtp")}>
+              测试邮件
+            </button>
+          </div>
+        </div>
+
+        <div className="desktop-shop-form-actions" style={{ marginTop: 16 }}>
+          <button className="desktop-primary-btn" onClick={saveNotifications}>
+            保存通知设置
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1503,6 +1668,19 @@ function FishAccounts() {
             </div>
             <pre className="fish-viewer-pre">{viewerContent || "暂无内容"}</pre>
             <div className="dialog-actions">
+              <button
+                className="dialog-btn"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(viewerContent || "");
+                    setMessage("已复制到剪贴板");
+                  } catch {
+                    setError("复制失败，请手动复制");
+                  }
+                }}
+              >
+                复制 JSON
+              </button>
               <button className="dialog-btn primary" onClick={() => setViewerOpen(false)}>
                 关闭
               </button>
@@ -1517,11 +1695,8 @@ function FishAccounts() {
             <div className="dialog-header">
               <h3 className="dialog-title">{editorTitle || "编辑"}</h3>
             </div>
-            <textarea className="form-textarea" rows={14} value={editorContent} onChange={(e) => setEditorContent(e.target.value)} />
+            <textarea className="form-textarea fish-editor-textarea" value={editorContent} onChange={(e) => setEditorContent(e.target.value)} />
             <div className="dialog-actions">
-              <button className="dialog-btn" onClick={() => setEditorOpen(false)}>
-                取消
-              </button>
               <button
                 className="dialog-btn primary"
                 onClick={async () => {
@@ -1544,6 +1719,9 @@ function FishAccounts() {
                 disabled={loading}
               >
                 保存
+              </button>
+                <button className="dialog-btn" onClick={() => setEditorOpen(false)}>
+                取消
               </button>
             </div>
           </div>

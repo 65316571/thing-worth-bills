@@ -20,6 +20,7 @@ from src.ai_handler import (
 )
 from src.config import (
     AI_DEBUG_MODE,
+    BROWSER_CHANNEL,
     DETAIL_API_URL_PATTERN,
     LOGIN_IS_EDGE,
     RUN_HEADLESS,
@@ -85,6 +86,8 @@ def _is_login_url(url: str) -> bool:
 
 def _resolve_browser_channel() -> str:
     global EDGE_DOCKER_WARNING_PRINTED
+    if BROWSER_CHANNEL:
+        return BROWSER_CHANNEL
     if RUNNING_IN_DOCKER:
         if LOGIN_IS_EDGE and not EDGE_DOCKER_WARNING_PRINTED:
             print(

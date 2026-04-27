@@ -235,6 +235,35 @@ export const fishApi = {
     });
   },
 
+  getBandwidthSettings() {
+    return fishRequest(`${FISH_API_PREFIX}/settings/bandwidth`);
+  },
+
+  updateBandwidthSettings(payload) {
+    return fishRequest(`${FISH_API_PREFIX}/settings/bandwidth`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  getNotificationSettings() {
+    return fishRequest(`${FISH_API_PREFIX}/settings/notifications`);
+  },
+
+  updateNotificationSettings(payload) {
+    return fishRequest(`${FISH_API_PREFIX}/settings/notifications`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  testNotificationSettings(payload) {
+    return fishRequest(`${FISH_API_PREFIX}/settings/notifications/test`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
   updateLoginState(content) {
     return fishRequest(`${FISH_API_PREFIX}/login-state`, {
       method: "POST",

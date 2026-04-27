@@ -2267,6 +2267,15 @@ window.alert, window.confirm, window.prompt {
   color: var(--ink-2);
 }
 
+.fish-editor-textarea {
+  min-height: 70vh;
+  max-height: 70vh;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
 .fish-account-preview {
   margin: 0;
   padding: 12px 14px;

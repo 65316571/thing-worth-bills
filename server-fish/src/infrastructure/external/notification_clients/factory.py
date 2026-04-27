@@ -4,8 +4,10 @@
 from src.infrastructure.config.settings import NotificationSettings
 
 from .bark_client import BarkClient
+from .feishu_bot_client import FeishuBotClient
 from .gotify_client import GotifyClient
 from .ntfy_client import NtfyClient
+from .smtp_email_client import SmtpEmailClient
 from .telegram_client import TelegramClient
 from .wecom_bot_client import WeComBotClient
 from .webhook_client import WebhookClient
@@ -35,6 +37,21 @@ def build_notification_clients(settings: NotificationSettings):
             webhook_content_type=settings.webhook_content_type,
             webhook_query_parameters=settings.webhook_query_parameters,
             webhook_body=settings.webhook_body,
+            pcurl_to_mobile=pcurl_to_mobile,
+        ),
+        FeishuBotClient(
+            settings.feishu_webhook_url,
+            settings.feishu_secret,
+            pcurl_to_mobile=pcurl_to_mobile,
+        ),
+        SmtpEmailClient(
+            host=settings.smtp_host,
+            port=settings.smtp_port,
+            username=settings.smtp_username,
+            password=settings.smtp_password,
+            sender=settings.smtp_sender,
+            recipient=settings.smtp_recipient,
+            use_tls=settings.smtp_use_tls,
             pcurl_to_mobile=pcurl_to_mobile,
         ),
     ]

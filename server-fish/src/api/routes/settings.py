@@ -96,6 +96,15 @@ class NotificationSettingsModel(BaseModel):
     WEBHOOK_QUERY_PARAMETERS: Optional[str] = None
     WEBHOOK_BODY: Optional[str] = None
     PCURL_TO_MOBILE: Optional[bool] = None
+    FEISHU_WEBHOOK_URL: Optional[str] = None
+    FEISHU_SECRET: Optional[str] = None
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: Optional[int] = None
+    SMTP_USERNAME: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_SENDER: Optional[str] = None
+    SMTP_RECIPIENT: Optional[str] = None
+    SMTP_USE_TLS: Optional[bool] = None
 
 
 class NotificationTestRequest(BaseModel):
@@ -126,6 +135,11 @@ class RotationSettingsModel(BaseModel):
     PROXY_POOL: Optional[str] = None
     PROXY_ROTATION_RETRY_LIMIT: Optional[int] = None
     PROXY_BLACKLIST_TTL: Optional[int] = None
+
+
+class BandwidthSettingsModel(BaseModel):
+    BANDWIDTH_MODE: Optional[str] = None
+    RATE_LIMIT_MULTIPLIER: Optional[str] = None
 
 
 @router.get("/notifications")
@@ -219,6 +233,33 @@ async def update_rotation_settings(settings: RotationSettingsModel):
         raise HTTPException(status_code=500, detail="更新轮换设置失败")
     _reload_env()
     return {"message": "轮换设置已成功更新"}
+
+
+@router.get("/bandwidth")
+async def get_bandwidth_settings():
+    mode = env_manager.get_value("BANDWIDTH_MODE", "normal")
+    multiplier = env_manager.get_value("RATE_LIMIT_MULTIPLIER", "")
+    from src.config import get_rate_limit_multiplier
+    return {
+        "BANDWIDTH_MODE": mode,
+        "RATE_LIMIT_MULTIPLIER": multiplier,
+        "effective_multiplier": get_rate_limit_multiplier(),
+    }
+
+
+@router.put("/bandwidth")
+async def update_bandwidth_settings(settings: BandwidthSettingsModel):
+    updates = {}
+    if settings.BANDWIDTH_MODE is not None:
+        updates["BANDWIDTH_MODE"] = settings.BANDWIDTH_MODE
+    if settings.RATE_LIMIT_MULTIPLIER is not None:
+        updates["RATE_LIMIT_MULTIPLIER"] = settings.RATE_LIMIT_MULTIPLIER
+
+    success = env_manager.update_values(updates)
+    if not success:
+        raise HTTPException(status_code=500, detail="更新带宽设置失败")
+    _reload_env()
+    return {"message": "带宽设置已成功更新"}
 
 
 @router.get("/status")

@@ -27,6 +27,15 @@ NOTIFICATION_FIELD_MAP = {
     "WEBHOOK_QUERY_PARAMETERS": "webhook_query_parameters",
     "WEBHOOK_BODY": "webhook_body",
     "PCURL_TO_MOBILE": "pcurl_to_mobile",
+    "FEISHU_WEBHOOK_URL": "feishu_webhook_url",
+    "FEISHU_SECRET": "feishu_secret",
+    "SMTP_HOST": "smtp_host",
+    "SMTP_PORT": "smtp_port",
+    "SMTP_USERNAME": "smtp_username",
+    "SMTP_PASSWORD": "smtp_password",
+    "SMTP_SENDER": "smtp_sender",
+    "SMTP_RECIPIENT": "smtp_recipient",
+    "SMTP_USE_TLS": "smtp_use_tls",
 }
 
 CHANNEL_NOTIFICATION_FIELDS = {
@@ -47,6 +56,16 @@ CHANNEL_NOTIFICATION_FIELDS = {
         "WEBHOOK_QUERY_PARAMETERS",
         "WEBHOOK_BODY",
     },
+    "feishu": {"FEISHU_WEBHOOK_URL", "FEISHU_SECRET"},
+    "smtp": {
+        "SMTP_HOST",
+        "SMTP_PORT",
+        "SMTP_USERNAME",
+        "SMTP_PASSWORD",
+        "SMTP_SENDER",
+        "SMTP_RECIPIENT",
+        "SMTP_USE_TLS",
+    },
 }
 
 SECRET_NOTIFICATION_FIELDS = {
@@ -56,6 +75,9 @@ SECRET_NOTIFICATION_FIELDS = {
     "TELEGRAM_BOT_TOKEN",
     "WEBHOOK_URL",
     "WEBHOOK_HEADERS",
+    "FEISHU_WEBHOOK_URL",
+    "FEISHU_SECRET",
+    "SMTP_PASSWORD",
 }
 
 JSON_NOTIFICATION_FIELDS = {
@@ -71,6 +93,7 @@ URL_FIELDS = {
     "WX_BOT_URL",
     "TELEGRAM_API_BASE_URL",
     "WEBHOOK_URL",
+    "FEISHU_WEBHOOK_URL",
 }
 
 ALLOWED_WEBHOOK_METHODS = {"GET", "POST"}
@@ -110,6 +133,15 @@ def build_notification_settings_response(
         "WEBHOOK_QUERY_PARAMETERS": notification_settings.webhook_query_parameters or "",
         "WEBHOOK_BODY": notification_settings.webhook_body or "",
         "PCURL_TO_MOBILE": notification_settings.pcurl_to_mobile,
+        "FEISHU_WEBHOOK_URL": "",
+        "FEISHU_SECRET": "",
+        "SMTP_HOST": notification_settings.smtp_host or "",
+        "SMTP_PORT": notification_settings.smtp_port or "",
+        "SMTP_USERNAME": "",
+        "SMTP_PASSWORD": "",
+        "SMTP_SENDER": notification_settings.smtp_sender or "",
+        "SMTP_RECIPIENT": notification_settings.smtp_recipient or "",
+        "SMTP_USE_TLS": notification_settings.smtp_use_tls,
     }
     for field in SECRET_NOTIFICATION_FIELDS:
         attr_name = NOTIFICATION_FIELD_MAP[field]
@@ -132,6 +164,13 @@ def build_notification_status_flags(
         "telegram_chat_id_set": bool(notification_settings.telegram_chat_id),
         "webhook_url_set": bool(notification_settings.webhook_url),
         "webhook_headers_set": bool(notification_settings.webhook_headers),
+        "feishu_webhook_url_set": bool(notification_settings.feishu_webhook_url),
+        "feishu_secret_set": bool(notification_settings.feishu_secret),
+        "smtp_host_set": bool(notification_settings.smtp_host),
+        "smtp_username_set": bool(notification_settings.smtp_username),
+        "smtp_password_set": bool(notification_settings.smtp_password),
+        "smtp_sender_set": bool(notification_settings.smtp_sender),
+        "smtp_recipient_set": bool(notification_settings.smtp_recipient),
     }
 
 
@@ -152,6 +191,16 @@ def build_configured_channels(
         channels.append("telegram")
     if notification_settings.webhook_url:
         channels.append("webhook")
+    if notification_settings.feishu_webhook_url:
+        channels.append("feishu")
+    if (
+        notification_settings.smtp_host
+        and notification_settings.smtp_username
+        and notification_settings.smtp_password
+        and notification_settings.smtp_sender
+        and notification_settings.smtp_recipient
+    ):
+        channels.append("smtp")
     return channels
 
 
@@ -270,6 +319,15 @@ def load_notification_settings() -> NotificationSettings:
             "webhook_query_parameters": _normalize_existing_text(env_manager.get_value("WEBHOOK_QUERY_PARAMETERS")),
             "webhook_body": _normalize_existing_text(env_manager.get_value("WEBHOOK_BODY")),
             "pcurl_to_mobile": _env_bool(env_manager.get_value("PCURL_TO_MOBILE"), True),
+            "feishu_webhook_url": _normalize_existing_text(env_manager.get_value("FEISHU_WEBHOOK_URL")),
+            "feishu_secret": _normalize_existing_text(env_manager.get_value("FEISHU_SECRET")),
+            "smtp_host": _normalize_existing_text(env_manager.get_value("SMTP_HOST")),
+            "smtp_port": _env_int(env_manager.get_value("SMTP_PORT")),
+            "smtp_username": _normalize_existing_text(env_manager.get_value("SMTP_USERNAME")),
+            "smtp_password": _normalize_existing_text(env_manager.get_value("SMTP_PASSWORD")),
+            "smtp_sender": _normalize_existing_text(env_manager.get_value("SMTP_SENDER")),
+            "smtp_recipient": _normalize_existing_text(env_manager.get_value("SMTP_RECIPIENT")),
+            "smtp_use_tls": _env_bool(env_manager.get_value("SMTP_USE_TLS"), True),
         }
     )
 
@@ -300,6 +358,15 @@ def _env_bool(value: str | None, default: bool) -> bool:
     if value is None:
         return default
     return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _env_int(value: str | None) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
 
 
 def _normalize_notification_values(values: dict) -> dict:
@@ -343,6 +410,14 @@ def _validate_notification_settings(settings: NotificationSettings) -> None:
         "TELEGRAM_CHAT_ID",
         settings.telegram_chat_id,
     )
+
+    # 验证 SMTP 配置完整性
+    smtp_fields = [settings.smtp_host, settings.smtp_username, settings.smtp_password, settings.smtp_sender, settings.smtp_recipient]
+    smtp_filled = [bool(f) for f in smtp_fields]
+    if any(smtp_filled) and not all(smtp_filled):
+        raise NotificationSettingsValidationError(
+            "SMTP 配置不完整：SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD, SMTP_SENDER, SMTP_RECIPIENT 必须同时填写"
+        )
 
     if settings.webhook_method not in ALLOWED_WEBHOOK_METHODS:
         allowed = ", ".join(sorted(ALLOWED_WEBHOOK_METHODS))

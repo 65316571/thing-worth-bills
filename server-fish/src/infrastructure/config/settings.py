@@ -74,6 +74,17 @@ class NotificationSettings(_EnvSettings):
     webhook_query_parameters: Optional[str] = _env_field(None, "WEBHOOK_QUERY_PARAMETERS")
     webhook_body: Optional[str] = _env_field(None, "WEBHOOK_BODY")
     pcurl_to_mobile: bool = _env_field(True, "PCURL_TO_MOBILE")
+    # 飞书机器人
+    feishu_webhook_url: Optional[str] = _env_field(None, "FEISHU_WEBHOOK_URL")
+    feishu_secret: Optional[str] = _env_field(None, "FEISHU_SECRET")
+    # SMTP 邮件
+    smtp_host: Optional[str] = _env_field(None, "SMTP_HOST")
+    smtp_port: Optional[int] = _env_field(None, "SMTP_PORT")
+    smtp_username: Optional[str] = _env_field(None, "SMTP_USERNAME")
+    smtp_password: Optional[str] = _env_field(None, "SMTP_PASSWORD")
+    smtp_sender: Optional[str] = _env_field(None, "SMTP_SENDER")
+    smtp_recipient: Optional[str] = _env_field(None, "SMTP_RECIPIENT")
+    smtp_use_tls: bool = _env_field(True, "SMTP_USE_TLS")
 
     def has_any_notification_enabled(self) -> bool:
         """检查是否配置了任何通知服务"""
@@ -83,7 +94,9 @@ class NotificationSettings(_EnvSettings):
             self.gotify_url and self.gotify_token,
             self.bark_url,
             self.telegram_bot_token and self.telegram_chat_id,
-            self.webhook_url
+            self.webhook_url,
+            self.feishu_webhook_url,
+            self.smtp_host and self.smtp_username and self.smtp_password and self.smtp_sender and self.smtp_recipient,
         ])
 
 

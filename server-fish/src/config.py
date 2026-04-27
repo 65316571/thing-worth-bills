@@ -45,7 +45,23 @@ PCURL_TO_MOBILE = os.getenv("PCURL_TO_MOBILE", "false").lower() == "true"
 RUN_HEADLESS = os.getenv("RUN_HEADLESS", "true").lower() != "false"
 LOGIN_IS_EDGE = os.getenv("LOGIN_IS_EDGE", "false").lower() == "true"
 RUNNING_IN_DOCKER = os.getenv("RUNNING_IN_DOCKER", "false").lower() == "true"
+BROWSER_CHANNEL = os.getenv("BROWSER_CHANNEL", "").strip()
 AI_DEBUG_MODE = os.getenv("AI_DEBUG_MODE", "false").lower() == "true"
+
+# --- Rate Limiting / Bandwidth Control ---
+# 带宽限速模式：normal（正常）、economy（经济/白天限速）、aggressive（激进/夜间加速）
+BANDWIDTH_MODE = os.getenv("BANDWIDTH_MODE", "normal").strip().lower()
+# 自定义速率倍数（覆盖 BANDWIDTH_MODE），例如 2.0 表示所有延迟翻倍，0.5 表示减半
+RATE_LIMIT_MULTIPLIER = os.getenv("RATE_LIMIT_MULTIPLIER", "").strip()
+
+def get_rate_limit_multiplier() -> float:
+    """获取请求速率限制倍数。大于1表示更慢（省带宽），小于1表示更快。"""
+    if RATE_LIMIT_MULTIPLIER:
+        try:
+            return float(RATE_LIMIT_MULTIPLIER)
+        except ValueError:
+            pass
+    return {"economy": 2.0, "normal": 1.0, "aggressive": 0.6}.get(BANDWIDTH_MODE, 1.0)
 SKIP_AI_ANALYSIS = os.getenv("SKIP_AI_ANALYSIS", "false").lower() == "true"
 ENABLE_THINKING = os.getenv("ENABLE_THINKING", "false").lower() == "true"
 ENABLE_RESPONSE_FORMAT = os.getenv("ENABLE_RESPONSE_FORMAT", "true").lower() == "true"
