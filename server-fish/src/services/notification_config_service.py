@@ -217,6 +217,22 @@ def prepare_notification_settings_update(
             continue
         merged_values[attr_name] = _normalize_patch_value(env_name, raw_value)
 
+    auto_deletions: list[str] = []
+    webhook_extras = {
+        "WEBHOOK_HEADERS": "webhook_headers",
+        "WEBHOOK_QUERY_PARAMETERS": "webhook_query_parameters",
+        "WEBHOOK_BODY": "webhook_body",
+    }
+    if (
+        "WEBHOOK_URL" not in patch_payload
+        and not any(key in patch_payload for key in webhook_extras)
+        and not merged_values.get("webhook_url")
+    ):
+        for env_name, attr_name in webhook_extras.items():
+            if merged_values.get(attr_name):
+                merged_values[attr_name] = None
+                auto_deletions.append(env_name)
+
     normalized_values = _normalize_notification_values(merged_values)
     candidate_settings = _build_notification_settings_model(normalized_values)
     _validate_notification_settings(candidate_settings)
@@ -235,6 +251,7 @@ def prepare_notification_settings_update(
             deletions.append(env_name)
             continue
         updates[env_name] = value
+    deletions.extend([key for key in auto_deletions if key not in deletions and key not in updates])
     return updates, deletions, candidate_settings
 
 

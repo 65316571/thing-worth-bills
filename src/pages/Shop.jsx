@@ -1142,7 +1142,7 @@ function FishSettings() {
         FEISHU_WEBHOOK_URL: n?.FEISHU_WEBHOOK_URL || "",
         FEISHU_SECRET: n?.FEISHU_SECRET || "",
         SMTP_HOST: n?.SMTP_HOST || "smtp.qq.com",
-        SMTP_PORT: n?.SMTP_PORT || "587",
+        SMTP_PORT: n?.SMTP_PORT ? String(n.SMTP_PORT) : "587",
         SMTP_USERNAME: n?.SMTP_USERNAME || "",
         SMTP_PASSWORD: n?.SMTP_PASSWORD || "",
         SMTP_SENDER: n?.SMTP_SENDER || "",
