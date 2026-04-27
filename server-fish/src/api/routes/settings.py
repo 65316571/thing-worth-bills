@@ -99,7 +99,7 @@ class NotificationSettingsModel(BaseModel):
     FEISHU_WEBHOOK_URL: Optional[str] = None
     FEISHU_SECRET: Optional[str] = None
     SMTP_HOST: Optional[str] = None
-    SMTP_PORT: Optional[int] = None
+    SMTP_PORT: Optional[str] = None
     SMTP_USERNAME: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     SMTP_SENDER: Optional[str] = None

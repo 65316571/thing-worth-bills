@@ -1107,7 +1107,7 @@ function FishSettings() {
   const [bandwidth, setBandwidth] = useState({ BANDWIDTH_MODE: "normal", RATE_LIMIT_MULTIPLIER: "" });
   const [notifications, setNotifications] = useState({
     FEISHU_WEBHOOK_URL: "", FEISHU_SECRET: "",
-    SMTP_HOST: "", SMTP_PORT: "", SMTP_USERNAME: "", SMTP_PASSWORD: "", SMTP_SENDER: "", SMTP_RECIPIENT: "", SMTP_USE_TLS: true,
+    SMTP_HOST: "smtp.qq.com", SMTP_PORT: "587", SMTP_USERNAME: "", SMTP_PASSWORD: "", SMTP_SENDER: "", SMTP_RECIPIENT: "start.haohao@qq.com", SMTP_USE_TLS: true,
   });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -1141,12 +1141,12 @@ function FishSettings() {
       setNotifications({
         FEISHU_WEBHOOK_URL: n?.FEISHU_WEBHOOK_URL || "",
         FEISHU_SECRET: n?.FEISHU_SECRET || "",
-        SMTP_HOST: n?.SMTP_HOST || "",
-        SMTP_PORT: n?.SMTP_PORT || "",
+        SMTP_HOST: n?.SMTP_HOST || "smtp.qq.com",
+        SMTP_PORT: n?.SMTP_PORT || "587",
         SMTP_USERNAME: n?.SMTP_USERNAME || "",
         SMTP_PASSWORD: n?.SMTP_PASSWORD || "",
         SMTP_SENDER: n?.SMTP_SENDER || "",
-        SMTP_RECIPIENT: n?.SMTP_RECIPIENT || "",
+        SMTP_RECIPIENT: n?.SMTP_RECIPIENT || "start.haohao@qq.com",
         SMTP_USE_TLS: n?.SMTP_USE_TLS !== false,
       });
     } catch (e) {
@@ -1217,6 +1217,7 @@ function FishSettings() {
       });
       await fishApi.updateNotificationSettings(payload);
       setMessage("通知设置已保存");
+      refresh();
     } catch (e) {
       setError(e.message || "保存失败");
     }
@@ -1226,7 +1227,11 @@ function FishSettings() {
     setError("");
     setMessage("");
     try {
-      const data = await fishApi.testNotificationSettings({ channel, settings: notifications });
+      const settings = {};
+      Object.entries(notifications).forEach(([k, v]) => {
+        if (v !== "" && v !== null && v !== undefined) settings[k] = v;
+      });
+      const data = await fishApi.testNotificationSettings({ channel, settings });
       const results = Object.values(data?.results || {});
       const success = results.filter((r) => r?.success);
       const fail = results.filter((r) => !r?.success);

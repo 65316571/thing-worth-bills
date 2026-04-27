@@ -13,7 +13,7 @@ from .base import NotificationClient, NotificationMessage
 class SmtpEmailClient(NotificationClient):
     """SMTP 邮件客户端"""
 
-    channel_key = "smtp_email"
+    channel_key = "smtp"
     display_name = "邮件 (SMTP)"
 
     def __init__(
@@ -99,4 +99,3 @@ class SmtpEmailClient(NotificationClient):
             server.sendmail(self._sender, [self._recipient], email.as_string())
 
         return True
-

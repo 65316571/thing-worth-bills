@@ -343,15 +343,22 @@ def _normalize_patch_value(env_name: str, value):
         return bool(value)
     if value is None:
         return None
-    text = str(value).strip()
+    text = _sanitize_text_value(str(value).strip())
     return text or None
 
 
 def _normalize_existing_text(value: str | None) -> str | None:
     if value is None:
         return None
-    text = str(value).strip()
+    text = _sanitize_text_value(str(value).strip())
     return text or None
+
+
+def _sanitize_text_value(text: str) -> str:
+    sanitized = text.strip()
+    if len(sanitized) >= 2 and sanitized[0] == sanitized[-1] and sanitized[0] in {"`", '"', "'"}:
+        sanitized = sanitized[1:-1].strip()
+    return sanitized
 
 
 def _env_bool(value: str | None, default: bool) -> bool:

@@ -14,7 +14,7 @@ from .base import NotificationClient, NotificationMessage
 class FeishuBotClient(NotificationClient):
     """飞书自定义机器人客户端"""
 
-    channel_key = "feishu_bot"
+    channel_key = "feishu"
     display_name = "飞书机器人"
 
     def __init__(self, webhook_url: str | None = None, secret: str | None = None, pcurl_to_mobile: bool = True):
@@ -112,4 +112,3 @@ class FeishuBotClient(NotificationClient):
         if result.get("code") != 0:
             raise RuntimeError(f"飞书 API 错误: {result.get('msg', '未知错误')}")
         return True
-
