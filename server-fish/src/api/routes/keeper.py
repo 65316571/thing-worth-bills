@@ -177,7 +177,7 @@ async def list_log_files():
 
 
 @router.get("/logs/files/{filename}")
-async def download_log_file(filename: str):
+async def view_log_file(filename: str):
     safe_name = str(filename or "").strip()
     if not safe_name.endswith(".log") or "/" in safe_name or "\\" in safe_name:
         raise HTTPException(status_code=400, detail="非法文件名")
@@ -186,8 +186,7 @@ async def download_log_file(filename: str):
         raise HTTPException(status_code=400, detail="非法文件名")
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="日志文件不存在")
-    headers = {"Content-Disposition": f'attachment; filename="{file_path.name}"'}
-    return FileResponse(str(file_path), media_type="text/plain; charset=utf-8", headers=headers)
+    return FileResponse(str(file_path), media_type="text/plain; charset=utf-8")
 
 
 @router.delete("/logs/files/{filename}")

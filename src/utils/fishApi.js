@@ -133,6 +133,44 @@ export const fishApi = {
     return `${FISH_API_PREFIX}/keeper/db/download`;
   },
 
+  getKeeperSummary() {
+    return fishRequest(`${FISH_API_PREFIX}/keeper/summary`);
+  },
+
+  getImageTasks() {
+    return fishRequest(`${FISH_API_PREFIX}/keeper/images/tasks`);
+  },
+
+  getImageTaskFiles(taskDir) {
+    return fishRequest(`${FISH_API_PREFIX}/keeper/images/tasks/${encodeURIComponent(taskDir)}/files`);
+  },
+
+  deleteImageTaskDir(taskDir) {
+    return fishRequest(`${FISH_API_PREFIX}/keeper/images/tasks/${encodeURIComponent(taskDir)}`, { method: "DELETE" });
+  },
+
+  deleteImageFile(relPath) {
+    const encoded = encodePathSegments(relPath);
+    return fishRequest(`${FISH_API_PREFIX}/keeper/images/files/${encoded}`, { method: "DELETE" });
+  },
+
+  buildImageRawUrl(relPath) {
+    const encoded = encodePathSegments(relPath);
+    return `${FISH_API_PREFIX}/keeper/images/raw/${encoded}`;
+  },
+
+  getKeeperLogFiles() {
+    return fishRequest(`${FISH_API_PREFIX}/keeper/logs/files`);
+  },
+
+  deleteKeeperLogFile(filename) {
+    return fishRequest(`${FISH_API_PREFIX}/keeper/logs/files/${encodeURIComponent(filename)}`, { method: "DELETE" });
+  },
+
+  buildKeeperLogViewUrl(filename) {
+    return `${FISH_API_PREFIX}/keeper/logs/files/${encodeURIComponent(filename)}`;
+  },
+
   getTasks() {
     return fishRequest(`${FISH_API_PREFIX}/tasks`);
   },

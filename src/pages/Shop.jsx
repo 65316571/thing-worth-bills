@@ -216,6 +216,7 @@ function FishTasks() {
   }
 
   const [createMode, setCreateMode] = useState("keyword");
+  const [formExpanded, setFormExpanded] = useState(false);
   const [form, setForm] = useState({
     task_name: "",
     keyword: "",
@@ -385,7 +386,20 @@ function FishTasks() {
       {error && <div className="notice desktop-notice">接口异常：{error}</div>}
 
       <div className="desktop-shop-card">
-        <div className="desktop-shop-card-title">新建任务</div>
+        <div className="desktop-shop-card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: formExpanded ? 12 : 0 }}>
+          <span>新建任务</span>
+          <button
+            className="desktop-action-btn"
+            onClick={() => setFormExpanded((p) => !p)}
+            title={formExpanded ? "收起配置" : "展开配置"}
+            type="button"
+          >
+            {formExpanded ? "收起 ▲" : "展开 ▼"}
+          </button>
+        </div>
+
+        {formExpanded && (
+        <>
         <div className="desktop-shop-form-grid">
           <div className="desktop-shop-form-field">
             <div className="desktop-shop-form-label">模式</div>
@@ -458,6 +472,8 @@ function FishTasks() {
             {loading ? "提交中..." : createMode === "ai" ? "AI 生成并创建" : "创建任务"}
           </button>
         </div>
+        </>
+        )}
 
         {job && (
           <div className="desktop-shop-job">
